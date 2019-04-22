@@ -106,10 +106,21 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    extern crate chrono;
+
+    use self::chrono::{Local, TimeZone};
     use super::*;
     use std::fs;
     use std::fs::File;
     use utils::test_utils;
+
+    #[inline]
+    fn time_to_str(value: u64) -> String {
+        let dt = Local.timestamp((value / 1000) as i64, 0);
+        let s = format!("{}", dt.format("%Y-%m-%d %H:%M:%S %:z"));
+
+        return s;
+    }
 
     #[test]
     fn test_sample_simple_messages() {
@@ -117,8 +128,8 @@ mod tests {
         let output = test_utils::temp_file("schema", ".out");
         let expected = vec![
             " field_int32  field_int64  field_float  field_double  field_string  field_boolean  field_timestamp ",
-            " 1            2            3.3          4.4           \"5\"           true           2009-03-31 20:00:00 -04:00 ",
-            " 11           22           33.3         44.4          \"55\"          false          2009-03-31 20:01:00 -04:00 ",
+            &format!(" 1            2            3.3          4.4           \"5\"           true           {} ", time_to_str(1238544000000)),
+            &format!(" 11           22           33.3         44.4          \"55\"          false          {} ", time_to_str(1238544060000)),
             ""
         ]
         .join("\n");

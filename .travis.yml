@@ -1,0 +1,12 @@
+language: rust
+cache: cargo
+rust:
+  - nightly
+
+before_install:
+  - export PATH="$PATH:$HOME/.cargo/bin"
+  - rustup component add rustfmt --toolchain nightly
+
+script:
+  - cargo fmt --all -- --check
+  - cargo test
