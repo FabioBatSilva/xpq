@@ -19,11 +19,12 @@ pub fn def() -> App<'static, 'static> {
                 .short("l"),
         )
         .arg(
-            Arg::with_name("output")
+            Arg::with_name("format")
                 .help("Output format")
+                .possible_values(&["table"])
                 .default_value("table")
-                .long("output")
-                .short("o"),
+                .long("format")
+                .short("f"),
         )
         .arg(
             Arg::with_name("path")
@@ -104,7 +105,6 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
 }
 
 #[cfg(test)]
-
 mod tests {
     use super::*;
     use std::fs;
@@ -112,14 +112,16 @@ mod tests {
     use utils::test_utils;
 
     #[test]
-    fn test_sample_simple_message() {
+    fn test_sample_simple_messages() {
         let parquet = test_utils::temp_file("msg", ".parquet");
         let output = test_utils::temp_file("schema", ".out");
         let expected = vec![
             " field_int32  field_int64  field_float  field_double  field_string  field_boolean  field_timestamp ",
-            " 111          222          333.3        444.4         \"555\"         false          2009-03-31 20:01:00 -04:00 ",
+            " 1            2            3.3          4.4           \"5\"           true           2009-03-31 20:00:00 -04:00 ",
+            " 11           22           33.3         44.4          \"55\"          false          2009-03-31 20:01:00 -04:00 ",
             ""
-        ].join("\n");
+        ]
+        .join("\n");
 
         let subcomand = def();
         let arg_vec = vec!["sample", parquet.path().to_str().unwrap()];
@@ -127,17 +129,29 @@ mod tests {
 
         {
             let mut file = File::create(&output).unwrap();
-            let msg = test_utils::SimpleMessage {
-                field_int32: 111,
-                field_int64: 222,
-                field_float: 333.3,
-                field_double: 444.4,
-                field_string: "555".to_string(),
+            let msg1 = test_utils::SimpleMessage {
+                field_int32: 1,
+                field_int64: 2,
+                field_float: 3.3,
+                field_double: 4.4,
+                field_string: "5".to_string(),
+                field_boolean: true,
+                field_timestamp: vec![0, 0, 2454923],
+            };
+            let msg2 = test_utils::SimpleMessage {
+                field_int32: 11,
+                field_int64: 22,
+                field_float: 33.3,
+                field_double: 44.4,
+                field_string: "55".to_string(),
                 field_boolean: false,
                 field_timestamp: vec![4165425152, 13, 2454923],
             };
 
-            test_utils::write_simple_message_parquet(&parquet.path(), &msg);
+            test_utils::write_simple_messages_parquet(
+                &parquet.path(),
+                &vec![&msg1, &msg2],
+            );
 
             assert_eq!(true, run(&args, &mut file).is_ok());
         }

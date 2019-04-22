@@ -10,11 +10,12 @@ pub fn def() -> App<'static, 'static> {
     SubCommand::with_name("schema")
         .about("Show parquet schema")
         .arg(
-            Arg::with_name("output")
+            Arg::with_name("format")
                 .help("Output format")
+                .possible_values(&["hive"])
                 .default_value("hive")
-                .long("output")
-                .short("o"),
+                .long("format")
+                .short("f"),
         )
         .arg(
             Arg::with_name("path")
