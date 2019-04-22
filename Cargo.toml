@@ -1,0 +1,20 @@
+[package]
+name = "xpq"
+version = "0.1.0-SNAPSHOT"
+authors = ["Fabio B. Silva <fabio.bat.silva@gmail.com>"]
+description = "Simple Parquet command line toolkit written in Rust."
+documentation = "https://github.com/FabioBatSilva/xpq"
+repository = "https://github.com/FabioBatSilva/xpq"
+homepage = "https://github.com/FabioBatSilva/xpq"
+keywords = ["parquet", "cli", "command"]
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
+clap = "2.33.0"
+walkdir = "2.2.7"
+prettytable-rs = "0.8.0"
+parquet = { git = "https://github.com/apache/arrow", rev = "b38936f0" }
+
+[dev-dependencies]
+tempfile = "3.0.7"
