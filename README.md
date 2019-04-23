@@ -20,6 +20,7 @@ cargo install --path .
 
 ### Available commands
 
+* **count** - Show num of rows.
 * **schema** - Show parquet schema.
 * **sample** - Read rows from parquet.
 
