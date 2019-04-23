@@ -1130,6 +1130,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "xpq"
 version = "0.1.0-SNAPSHOT"
 dependencies = [
+ "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parquet 0.14.0-SNAPSHOT (git+https://github.com/apache/arrow?rev=b38936f0)",
  "prettytable-rs 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",

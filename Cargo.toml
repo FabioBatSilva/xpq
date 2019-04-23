@@ -18,3 +18,4 @@ parquet = { git = "https://github.com/apache/arrow", rev = "b38936f0" }
 
 [dev-dependencies]
 tempfile = "3.0.7"
+chrono = "0.4.6"
