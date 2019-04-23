@@ -45,11 +45,19 @@ message example.avro.User {
 }
 ```
 
+Check the number of rows :
+```
+xpq count users.parquet
+
+ count
+ 2
+```
+
 Read some data :
 ```
 xpq sample users.parquet
 
-name      favorite_color  favorite_numbers
+ name      favorite_color  favorite_numbers
  "Alyssa"  null            [3, 9, 15, 20]
  "Ben"     "red"           []
 ```

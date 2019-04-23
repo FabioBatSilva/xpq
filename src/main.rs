@@ -15,6 +15,7 @@ fn run(matches: ArgMatches) -> Result<(), String> {
     match matches.subcommand() {
         ("schema", Some(m)) => command::schema::run(m, out),
         ("sample", Some(m)) => command::sample::run(m, out),
+        ("count", Some(m)) => command::count::run(m, out),
         _ => Ok(()),
     }
 }
@@ -25,7 +26,11 @@ fn main() {
         .setting(AppSettings::ArgRequiredElseHelp)
         .author("Fabio B. Silva <fabio.bat.silva@gmail.com>")
         .about("Parquet command line toolkit written in Rust")
-        .subcommands(vec![command::schema::def(), command::sample::def()]);
+        .subcommands(vec![
+            command::count::def(),
+            command::schema::def(),
+            command::sample::def(),
+        ]);
 
     if let Err(e) = run(app.get_matches()) {
         panic!("Application error: {}", e);

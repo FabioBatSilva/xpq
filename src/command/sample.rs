@@ -98,7 +98,6 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
         sample_file(&p?, table, limit)?
     }
 
-    // Print the table to stdout
     table.print(out).expect("Fail to print table");
 
     return Ok(());
