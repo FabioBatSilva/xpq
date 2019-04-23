@@ -24,3 +24,32 @@ cargo install --path .
 * **sample** - Read rows from parquet.
 
 ### Quick tour
+
+Grab the some parquet data :
+
+```
+wget -O users.parquet https://github.com/apache/spark/blob/master/examples/src/main/resources/users.parquet?raw=true
+
+```
+
+Check the schema :
+```
+xpq schema users.parquet
+
+message example.avro.User {
+  REQUIRED BYTE_ARRAY name (UTF8);
+  OPTIONAL BYTE_ARRAY favorite_color (UTF8);
+  REQUIRED group favorite_numbers (LIST) {
+    REPEATED INT32 array;
+  }
+}
+```
+
+Read some data :
+```
+xpq sample users.parquet
+
+name      favorite_color  favorite_numbers
+ "Alyssa"  null            [3, 9, 15, 20]
+ "Ben"     "red"           []
+```
