@@ -1,10 +1,9 @@
+use crate::reader::get_parquet_readers;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use command::args;
-use iterator::{ParquetFileReader, ParquetPathIterator};
 use parquet::file::reader::FileReader;
 use parquet::schema::printer::print_schema;
 use std::io::Write;
-use std::path::Path;
 
 pub fn def() -> App<'static, 'static> {
     SubCommand::with_name("schema")
@@ -26,36 +25,31 @@ pub fn def() -> App<'static, 'static> {
         )
 }
 
-fn schema<W: Write>(path: &Path, out: &mut W) -> Result<(), String> {
-    let paths = ParquetPathIterator::new(path);
-    let mut reader = ParquetFileReader::new(paths);
-    let parquet = reader.next().ok_or_else(|| "Unable to read file")??;
-
-    let metadata = parquet.metadata().file_metadata();
-    let schema = metadata.schema();
-
-    print_schema(out, &schema);
-
-    Ok(())
-}
-
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let path = args::path_value(matches, "path")?;
+    let readers = get_parquet_readers(path)?;
+    let metadata = readers
+        .first()
+        .map(|p| p.metadata())
+        .map(|m| m.file_metadata())
+        .ok_or("Unable to read parquet")?;
 
-    return schema(path, out);
+    print_schema(out, &metadata.schema());
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use std::fs::File;
+    use std::io::Cursor;
+    use std::str;
     use utils::test_utils;
 
     #[test]
     fn test_schema_simple_message() {
+        let mut output = Cursor::new(Vec::new());
         let parquet = test_utils::temp_file("msg", "parquet");
-        let output = test_utils::temp_file("schema", "out");
         let expected = vec![
             "message simple_message {",
             "  OPTIONAL INT32 field_int32;",
@@ -75,7 +69,6 @@ mod tests {
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
         {
-            let mut file = File::create(&output).unwrap();
             let msg = test_utils::SimpleMessage {
                 field_int32: 111,
                 field_int64: 222,
@@ -88,9 +81,12 @@ mod tests {
 
             test_utils::write_simple_message_parquet(&parquet.path(), &msg);
 
-            assert_eq!(true, run(&args, &mut file).is_ok());
+            assert_eq!(true, run(&args, &mut output).is_ok());
         }
 
-        assert_eq!(expected, fs::read_to_string(output).unwrap());
+        let vec = output.into_inner();
+        let actual = str::from_utf8(&vec).unwrap();
+
+        assert_eq!(actual, expected);
     }
 }
