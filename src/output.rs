@@ -1,7 +1,7 @@
 use prettytable::{format, Cell, Row, Table};
 use std::io::Write;
 
-fn to_cell(vec: &Vec<String>) -> Vec<Cell> {
+fn to_cell(vec: &[String]) -> Vec<Cell> {
     vec.iter().map(|h| Cell::new(h)).collect()
 }
 
@@ -15,10 +15,7 @@ where
     T: Iterator<Item = Vec<String>>,
 {
     pub fn new(headers: Vec<String>, values: T) -> Self {
-        Self {
-            headers: headers,
-            values: values,
-        }
+        Self { headers, values }
     }
 
     pub fn write<W: Write>(&mut self, out: &mut W) -> Result<(), String> {

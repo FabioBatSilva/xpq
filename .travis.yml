@@ -1,12 +1,19 @@
 language: rust
 cache: cargo
 rust:
-  - nightly
+  - nightly-2019-04-26
+
+env:
+  global:
+    - RUST_TOOLCHAIN_VERSION=nightly-2019-04-26
 
 before_install:
   - export PATH="$PATH:$HOME/.cargo/bin"
-  - rustup component add rustfmt --toolchain nightly
+  - rustup toolchain install $RUST_TOOLCHAIN_VERSION
+  - rustup component add rustfmt --toolchain $RUST_TOOLCHAIN_VERSION
+  - rustup component add clippy --toolchain $RUST_TOOLCHAIN_VERSION
 
 script:
-  - cargo fmt --all -- --check
-  - cargo test
+  - cargo +$RUST_TOOLCHAIN_VERSION clippy --all-targets --all-features -- -D warnings
+  - cargo +$RUST_TOOLCHAIN_VERSION fmt --all -- --check
+  - cargo +$RUST_TOOLCHAIN_VERSION test

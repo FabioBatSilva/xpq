@@ -1,5 +1,6 @@
 use clap::ArgMatches;
 use std::path::Path;
+use std::str;
 
 pub fn path_value<'a>(
     matches: &'a ArgMatches<'a>,
@@ -9,16 +10,16 @@ pub fn path_value<'a>(
         .value_of(name)
         .map(|p| Path::new(p))
         .filter(|p| p.exists())
-        .ok_or(format!("Invalid argument : {}", name))
+        .ok_or_else(|| format!("Invalid argument : {}", name))
 }
 
 pub fn usize_value(matches: &ArgMatches, name: &str) -> Result<usize, String> {
     matches
         .value_of(name)
-        .map(|s| s.parse())
-        .filter(|r| r.is_ok())
-        .map(|r| r.unwrap())
-        .ok_or(format!("Invalid argument : {}", name))
+        .map(str::parse)
+        .filter(Result::is_ok)
+        .map(Result::unwrap)
+        .ok_or_else(|| format!("Invalid argument : {}", name))
 }
 
 pub fn validate_number(value: String) -> Result<(), String> {
@@ -29,10 +30,10 @@ pub fn validate_number(value: String) -> Result<(), String> {
 }
 
 pub fn validate_path(value: String) -> Result<(), String> {
-    match Path::new(&value).exists() {
-        true => Ok(()),
-        _ => Err(format!("Path '{}' does not exist", value)),
-    }
+    Some(Path::new(&value))
+        .filter(|p| p.exists())
+        .map(|_| ())
+        .ok_or_else(|| format!("Path '{}' does not exist", value))
 }
 
 #[cfg(test)]
@@ -95,9 +96,9 @@ mod tests {
     }
 
     fn create_matches<'a>(name: &'a str, value: &'a str) -> ArgMatches<'a> {
-        return App::new(name)
+        App::new(name)
             .arg(Arg::with_name(name).index(1).required(true))
             .get_matches_from_safe(vec![name, value])
-            .unwrap();
+            .unwrap()
     }
 }

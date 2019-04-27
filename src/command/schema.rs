@@ -30,7 +30,7 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let readers = get_parquet_readers(path)?;
     let metadata = readers
         .first()
-        .map(|p| p.metadata())
+        .map(FileReader::metadata)
         .map(|m| m.file_metadata())
         .ok_or("Unable to read parquet")?;
 
@@ -76,7 +76,7 @@ mod tests {
                 field_double: 444.4,
                 field_string: "555".to_string(),
                 field_boolean: false,
-                field_timestamp: vec![0, 0, 2454923],
+                field_timestamp: vec![0, 0, 2_454_923],
             };
 
             test_utils::write_simple_message_parquet(&parquet.path(), &msg);

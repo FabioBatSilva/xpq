@@ -89,7 +89,7 @@ mod tests {
         let dt = Local.timestamp((value / 1000) as i64, 0);
         let s = format!("{}", dt.format("%Y-%m-%d %H:%M:%S %:z"));
 
-        return s;
+        s
     }
 
     #[test]
@@ -98,8 +98,8 @@ mod tests {
         let parquet = test_utils::temp_file("msg", ".parquet");
         let expected = vec![
             " field_int32  field_int64  field_float  field_double  field_string  field_boolean  field_timestamp ",
-            &format!(" 1            2            3.3          4.4           \"5\"           true           {} ", time_to_str(1238544000000)),
-            &format!(" 11           22           33.3         44.4          \"55\"          false          {} ", time_to_str(1238544060000)),
+            &format!(" 1            2            3.3          4.4           \"5\"           true           {} ", time_to_str(1_238_544_000_000)),
+            &format!(" 11           22           33.3         44.4          \"55\"          false          {} ", time_to_str(1_238_544_060_000)),
             ""
         ]
         .join("\n");
@@ -116,7 +116,7 @@ mod tests {
                 field_double: 4.4,
                 field_string: "5".to_string(),
                 field_boolean: true,
-                field_timestamp: vec![0, 0, 2454923],
+                field_timestamp: vec![0, 0, 2_454_923],
             };
             let msg2 = test_utils::SimpleMessage {
                 field_int32: 11,
@@ -125,13 +125,10 @@ mod tests {
                 field_double: 44.4,
                 field_string: "55".to_string(),
                 field_boolean: false,
-                field_timestamp: vec![4165425152, 13, 2454923],
+                field_timestamp: vec![4_165_425_152, 13, 2_454_923],
             };
 
-            test_utils::write_simple_messages_parquet(
-                &parquet.path(),
-                &vec![&msg1, &msg2],
-            );
+            test_utils::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
 
             assert_eq!(true, run(&args, &mut output).is_ok());
         }

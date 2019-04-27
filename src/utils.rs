@@ -39,19 +39,19 @@ pub mod test_utils {
         ";
 
     pub fn temp_file(name: &str, suffix: &str) -> NamedTempFile {
-        return Builder::new()
+        Builder::new()
             .suffix(suffix)
             .prefix(name)
             .rand_bytes(5)
             .tempfile()
-            .expect("Fail to create tmp file");
+            .expect("Fail to create tmp file")
     }
 
     pub fn temp_dir() -> TempDir {
-        return Builder::new()
+        Builder::new()
             .rand_bytes(5)
             .tempdir()
-            .expect("Fail to create tmp file");
+            .expect("Fail to create tmp file")
     }
 
     macro_rules! write_next_col_writer {
@@ -77,10 +77,10 @@ pub mod test_utils {
     }
 
     pub fn write_simple_message_parquet(path: &Path, msg: &SimpleMessage) {
-        write_simple_messages_parquet(path, &vec![msg]);
+        write_simple_messages_parquet(path, &[msg]);
     }
 
-    pub fn write_simple_messages_parquet(path: &Path, vec: &Vec<&SimpleMessage>) {
+    pub fn write_simple_messages_parquet(path: &Path, vec: &[&SimpleMessage]) {
         let schema = Rc::new(parse_message_type(SIMPLE_MESSSAGE_SCHEMA).unwrap());
         let props = Rc::new(WriterProperties::builder().build());
         let file = fs::File::create(path).unwrap();
@@ -93,36 +93,35 @@ pub mod test_utils {
         writer.close().unwrap();
     }
 
-    pub fn write_simple_row_group(
+    #[allow(clippy::borrowed_box)]
+    fn write_simple_row_group(
         row_group_writer: &mut Box<RowGroupWriter>,
-        vec: &Vec<&SimpleMessage>,
+        vec: &[&SimpleMessage],
     ) {
         write_next_col_writer!(row_group_writer, Int32ColumnWriter, vec, |m| {
-            return m.field_int32;
+            m.field_int32
         });
         write_next_col_writer!(row_group_writer, Int64ColumnWriter, vec, |m| {
-            return m.field_int64;
+            m.field_int64
         });
         write_next_col_writer!(row_group_writer, FloatColumnWriter, vec, |m| {
-            return m.field_float;
+            m.field_float
         });
         write_next_col_writer!(row_group_writer, DoubleColumnWriter, vec, |m| {
-            return m.field_double;
+            m.field_double
         });
         write_next_col_writer!(row_group_writer, ByteArrayColumnWriter, vec, |m| {
             let string: &str = &m.field_string;
-            let byte_array = ByteArray::from(string);
 
-            return byte_array;
+            ByteArray::from(string)
         });
         write_next_col_writer!(row_group_writer, BoolColumnWriter, vec, |m| {
-            return m.field_boolean;
+            m.field_boolean
         });
         write_next_col_writer!(row_group_writer, Int96ColumnWriter, vec, |m| {
             let vec = m.field_timestamp.clone();
-            let int96 = Int96::from(vec);
 
-            return int96;
+            Int96::from(vec)
         });
     }
 }
