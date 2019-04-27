@@ -183,10 +183,12 @@ mod tests {
         File::create(path2.clone()).unwrap();
         File::create(path3.clone()).unwrap();
 
-        let dir_vec = walk_parquet(dir.path());
+        let mut dir_vec = walk_parquet(dir.path());
         let file1_vec = walk_parquet(&path1);
         let file2_vec = walk_parquet(&path2);
         let file3_vec = walk_parquet(&path3);
+
+        dir_vec.sort();
 
         assert_eq!(dir_vec.len(), 2);
         assert_eq!(dir_vec, vec![path1.clone(), path2.clone()]);
