@@ -29,7 +29,7 @@ fn count_file(reader: &FileReader) -> Result<i64, String> {
     let metadata = reader.metadata().file_metadata();
     let count = metadata.num_rows();
 
-    return Ok(count);
+    Ok(count)
 }
 
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
@@ -38,7 +38,7 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let mut count: i64 = 0;
 
     for p in readers {
-        count = count + count_file(&p)?
+        count += count_file(&p)?;
     }
 
     let headers = vec![String::from("COUNT")];

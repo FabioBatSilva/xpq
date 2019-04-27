@@ -35,7 +35,7 @@ fn create_parquet_reader(path: &Path) -> ParquetReaderResult {
 }
 
 #[inline]
-fn create_row_iter<'a>(reader: &'a ParquetFileReader) -> Result<RowIter<'a>, String> {
+fn create_row_iter(reader: &ParquetFileReader) -> Result<RowIter, String> {
     reader
         .get_row_iter(None)
         .map_err(|e| format!("Failed iterate parquet file : {}", e))
@@ -47,16 +47,16 @@ fn walk_parquet_dir(path: &Path) -> Vec<PathBuf> {
         .contents_first(true)
         .into_iter()
         .filter_entry(is_parquet_file)
-        .filter_map(|e| e.ok())
-        .map(|e| e.into_path())
+        .filter_map(Result::ok)
+        .map(DirEntry::into_path)
         .collect::<Vec<_>>()
 }
 
 fn walk_parquet(path: &Path) -> Vec<PathBuf> {
-    match path.is_file() {
-        true => vec![path.to_path_buf()],
-        false => walk_parquet_dir(path),
-    }
+    Some(Path::new(&path))
+        .filter(|p| p.is_file())
+        .map(|p| vec![p.to_path_buf()])
+        .unwrap_or_else(|| walk_parquet_dir(path))
 }
 
 pub fn get_parquet_readers(path: &Path) -> ParquetReadersResult {
@@ -76,10 +76,10 @@ pub struct ParquetRowIterator<'a> {
 
 impl<'a> ParquetRowIterator<'a> {
     pub fn new(vec: Vec<RowIter<'a>>) -> Self {
-        Self { vec: vec, index: 0 }
+        Self { vec, index: 0 }
     }
 
-    pub fn of(readers: &'a Vec<ParquetFileReader>) -> ParquetRowIteratorResult<'a> {
+    pub fn of(readers: &'a [ParquetFileReader]) -> ParquetRowIteratorResult<'a> {
         let mut vec = Vec::new();
 
         for r in readers {
@@ -101,7 +101,7 @@ impl<'a> Iterator for ParquetRowIterator<'a> {
                 return next;
             }
 
-            self.index = self.index + 1;
+            self.index += 1;
         }
 
         None
@@ -133,7 +133,7 @@ mod tests {
                 field_double: 4.4,
                 field_string: "5".to_string(),
                 field_boolean: true,
-                field_timestamp: vec![0, 0, 2454923],
+                field_timestamp: vec![0, 0, 2_454_923],
             },
         );
 
@@ -162,7 +162,7 @@ mod tests {
                 field_double: 4.4,
                 field_string: "5".to_string(),
                 field_boolean: true,
-                field_timestamp: vec![0, 0, 2454923],
+                field_timestamp: vec![0, 0, 2_454_923],
             },
         );
 
@@ -225,7 +225,7 @@ mod tests {
                     field_double: 4.4,
                     field_string: "5".to_string(),
                     field_boolean: true,
-                    field_timestamp: vec![0, 0, 2454923],
+                    field_timestamp: vec![0, 0, 2_454_923],
                 },
             );
 
@@ -238,7 +238,7 @@ mod tests {
                     field_double: 44.4,
                     field_string: "55".to_string(),
                     field_boolean: false,
-                    field_timestamp: vec![4165425152, 13, 2454923],
+                    field_timestamp: vec![4_165_425_152, 13, 2_454_923],
                 },
             );
         }
