@@ -1,7 +1,10 @@
-# xpq
-xpq is a command line program for sampling, analyzing parquet files.
-
 **NOTICE: THIS CLIENT IS UNDER ACTIVE DEVELOPMENT, USE AT YOUR OWN RISK**
+
+# xpq
+xpq is a simple command line program for analyzing parquet files.
+
+[![Build Status](https://travis-ci.org/FabioBatSilva/xpq.svg?branch=master)](https://travis-ci.org/FabioBatSilva/xpq)
+
 
 ## Requirements
 - Rust nightly
