@@ -6,7 +6,8 @@ extern crate walkdir;
 use clap::{App, AppSettings, ArgMatches};
 
 mod command;
-mod iterator;
+mod output;
+mod reader;
 mod utils;
 
 fn run(matches: ArgMatches) -> Result<(), String> {

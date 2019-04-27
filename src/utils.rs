@@ -2,7 +2,7 @@
 pub mod test_utils {
     extern crate tempfile;
 
-    use self::tempfile::{Builder, NamedTempFile};
+    use self::tempfile::{Builder, NamedTempFile, TempDir};
     use std::iter;
     use std::{fs, path::Path, rc::Rc};
 
@@ -44,7 +44,14 @@ pub mod test_utils {
             .prefix(name)
             .rand_bytes(5)
             .tempfile()
-            .expect("Fail to create tmp dir");
+            .expect("Fail to create tmp file");
+    }
+
+    pub fn temp_dir() -> TempDir {
+        return Builder::new()
+            .rand_bytes(5)
+            .tempdir()
+            .expect("Fail to create tmp file");
     }
 
     macro_rules! write_next_col_writer {

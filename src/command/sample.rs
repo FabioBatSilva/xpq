@@ -1,10 +1,10 @@
+use crate::command::args;
+use crate::output::TableOutputWriter;
+use crate::reader::{get_parquet_readers, ParquetRowIterator};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use command::args;
-use iterator::{ParquetFileReader, ParquetPathIterator};
 use parquet::file::reader::FileReader;
 use parquet::record::Row as ParquetRow;
 use parquet::record::RowFormatter;
-use prettytable::{format, Cell, Row, Table};
 use std::io::Write;
 
 pub fn def() -> App<'static, 'static> {
@@ -36,71 +36,42 @@ pub fn def() -> App<'static, 'static> {
 }
 
 fn format(row: &ParquetRow) -> Vec<String> {
-    let mut values: Vec<String> = Vec::new();
+    let mut values = Vec::new();
 
     for i in 0..row.len() {
         values.push(format!("{}", row.fmt(i)));
     }
 
-    return values;
+    values
 }
 
-fn sample_file(
-    reader: &FileReader,
-    table: &mut Table,
-    limit: usize,
-) -> Result<(), String> {
-    let mut iter = reader
-        .get_row_iter(None)
-        .map_err(|e| format!("Failed iterate parquet file : {}", e))?;
-
+fn metadata_headers(reader: &FileReader) -> Vec<String> {
     let metadata = reader.metadata().file_metadata();
     let schema = metadata.schema();
+    let mut headers = Vec::new();
 
-    if table.is_empty() {
-        let mut titles = Vec::new();
-
-        for field in schema.get_fields() {
-            titles.push(Cell::new(field.name()))
-        }
-
-        table.set_titles(Row::new(titles));
+    for field in schema.get_fields() {
+        headers.push(String::from(field.name()));
     }
 
-    while let Some(row) = iter.next() {
-        let mut row_values = Vec::new();
-
-        for value in format(&row) {
-            row_values.push(Cell::new(&value));
-        }
-
-        table.add_row(Row::new(row_values));
-
-        if table.len() >= limit {
-            break;
-        }
-    }
-
-    return Ok(());
+    headers
 }
 
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let limit = args::usize_value(matches, "limit")?;
     let path = args::path_value(matches, "path")?;
+    let readers = get_parquet_readers(path)?;
+    let rows = ParquetRowIterator::of(&readers)?;
+    let iter = rows.take(limit).map(|r| format(&r));
 
-    let paths = ParquetPathIterator::new(path);
-    let reader = ParquetFileReader::new(paths);
-    let table = &mut Table::new();
-
-    table.set_format(*format::consts::FORMAT_CLEAN);
-
-    for p in reader {
-        sample_file(&p?, table, limit)?
+    if readers.is_empty() {
+        return Ok(());
     }
 
-    table.print(out).expect("Fail to print table");
+    let headers = metadata_headers(&readers[0]);
+    let mut writer = TableOutputWriter::new(headers, iter);
 
-    return Ok(());
+    writer.write(out)
 }
 
 #[cfg(test)]
@@ -109,8 +80,8 @@ mod tests {
 
     use self::chrono::{Local, TimeZone};
     use super::*;
-    use std::fs;
-    use std::fs::File;
+    use std::io::Cursor;
+    use std::str;
     use utils::test_utils;
 
     #[inline]
@@ -123,8 +94,8 @@ mod tests {
 
     #[test]
     fn test_sample_simple_messages() {
+        let mut output = Cursor::new(Vec::new());
         let parquet = test_utils::temp_file("msg", ".parquet");
-        let output = test_utils::temp_file("schema", ".out");
         let expected = vec![
             " field_int32  field_int64  field_float  field_double  field_string  field_boolean  field_timestamp ",
             &format!(" 1            2            3.3          4.4           \"5\"           true           {} ", time_to_str(1238544000000)),
@@ -138,7 +109,6 @@ mod tests {
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
         {
-            let mut file = File::create(&output).unwrap();
             let msg1 = test_utils::SimpleMessage {
                 field_int32: 1,
                 field_int64: 2,
@@ -163,9 +133,12 @@ mod tests {
                 &vec![&msg1, &msg2],
             );
 
-            assert_eq!(true, run(&args, &mut file).is_ok());
+            assert_eq!(true, run(&args, &mut output).is_ok());
         }
 
-        assert_eq!(expected, fs::read_to_string(output.path()).unwrap());
+        let vec = output.into_inner();
+        let actual = str::from_utf8(&vec).unwrap();
+
+        assert_eq!(actual, expected);
     }
 }

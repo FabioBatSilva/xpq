@@ -1,8 +1,8 @@
+use crate::command::args;
+use crate::output::TableOutputWriter;
+use crate::reader::get_parquet_readers;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use command::args;
-use iterator::{ParquetFileReader, ParquetPathIterator};
 use parquet::file::reader::FileReader;
-use prettytable::{format, Cell, Row, Table};
 use std::io::Write;
 
 pub fn def() -> App<'static, 'static> {
@@ -34,20 +34,18 @@ fn count_file(reader: &FileReader) -> Result<i64, String> {
 
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let path = args::path_value(matches, "path")?;
-    let paths = ParquetPathIterator::new(path);
-    let reader = ParquetFileReader::new(paths);
-    let mut table = Table::new();
+    let readers = get_parquet_readers(path)?;
     let mut count: i64 = 0;
 
-    table.set_format(*format::consts::FORMAT_CLEAN);
-    table.set_titles(Row::new(vec![Cell::new("count")]));
-
-    for p in reader {
-        count = count + count_file(&p?)?
+    for p in readers {
+        count = count + count_file(&p)?
     }
 
-    table.add_row(Row::new(vec![Cell::new(&format!("{}", count))]));
-    table.print(out).expect("Fail to print table");
+    let headers = vec![String::from("COUNT")];
+    let values = vec![vec![format!("{}", count)]];
 
-    return Ok(());
+    let iter = values.into_iter();
+    let mut writer = TableOutputWriter::new(headers, iter);
+
+    writer.write(out)
 }
