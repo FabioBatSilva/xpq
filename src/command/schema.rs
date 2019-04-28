@@ -1,7 +1,6 @@
-use crate::reader::get_parquet_readers;
+use crate::reader::ParquetFile;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use command::args;
-use parquet::file::reader::FileReader;
 use parquet::schema::printer::print_schema;
 use std::io::Write;
 
@@ -27,16 +26,20 @@ pub fn def() -> App<'static, 'static> {
 
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let path = args::path_value(matches, "path")?;
-    let readers = get_parquet_readers(path)?;
-    let metadata = readers
-        .first()
-        .map(FileReader::metadata)
-        .map(|m| m.file_metadata())
-        .ok_or("Unable to read parquet")?;
+    let parquet = ParquetFile::of(path)?;
+    let metadata = parquet.metadata(0);
 
-    print_schema(out, &metadata.schema());
+    match metadata {
+        Some(metadata) => {
+            let file_meta = metadata.file_metadata();
+            let schema = file_meta.schema();
 
-    Ok(())
+            print_schema(out, &schema);
+
+            Ok(())
+        }
+        None => Ok(()),
+    }
 }
 
 #[cfg(test)]

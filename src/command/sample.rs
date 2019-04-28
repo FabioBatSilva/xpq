@@ -1,8 +1,8 @@
 use crate::command::args;
 use crate::output::TableOutputWriter;
-use crate::reader::{get_parquet_readers, ParquetRowIterator};
+use crate::reader::ParquetFile;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use parquet::file::reader::FileReader;
+use parquet::file::metadata::ParquetMetaDataPtr;
 use parquet::record::Row as ParquetRow;
 use parquet::record::RowFormatter;
 use std::io::Write;
@@ -45,9 +45,9 @@ fn format(row: &ParquetRow) -> Vec<String> {
     values
 }
 
-fn metadata_headers(reader: &FileReader) -> Vec<String> {
-    let metadata = reader.metadata().file_metadata();
-    let schema = metadata.schema();
+fn metadata_headers(metadata: &ParquetMetaDataPtr) -> Vec<String> {
+    let file_metadata = metadata.file_metadata();
+    let schema = file_metadata.schema();
     let mut headers = Vec::new();
 
     for field in schema.get_fields() {
@@ -60,18 +60,20 @@ fn metadata_headers(reader: &FileReader) -> Vec<String> {
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let limit = args::usize_value(matches, "limit")?;
     let path = args::path_value(matches, "path")?;
-    let readers = get_parquet_readers(path)?;
-    let rows = ParquetRowIterator::of(&readers)?;
+    let parquet = ParquetFile::of(path)?;
+    let metadata = parquet.metadata(0);
+    let rows = parquet.to_row_iter()?;
     let iter = rows.take(limit).map(|r| format(&r));
 
-    if readers.is_empty() {
-        return Ok(());
+    match metadata {
+        Some(meta) => {
+            let headers = metadata_headers(&meta);
+            let mut writer = TableOutputWriter::new(headers, iter);
+
+            writer.write(out)
+        }
+        None => Ok(()),
     }
-
-    let headers = metadata_headers(&readers[0]);
-    let mut writer = TableOutputWriter::new(headers, iter);
-
-    writer.write(out)
 }
 
 #[cfg(test)]

@@ -1,3 +1,4 @@
+use parquet::file::metadata::ParquetMetaDataPtr;
 use parquet::file::reader::FileReader;
 use parquet::file::reader::SerializedFileReader;
 use parquet::record::reader::RowIter;
@@ -8,7 +9,6 @@ use walkdir::{DirEntry, WalkDir};
 
 pub type ParquetFileReader = SerializedFileReader<File>;
 pub type ParquetReaderResult = Result<ParquetFileReader, String>;
-pub type ParquetReadersResult = Result<Vec<ParquetFileReader>, String>;
 pub type ParquetRowIteratorResult<'a> = Result<ParquetRowIterator<'a>, String>;
 
 fn is_parquet_file(entry: &DirEntry) -> bool {
@@ -59,7 +59,7 @@ fn walk_parquet(path: &Path) -> Vec<PathBuf> {
         .unwrap_or_else(|| walk_parquet_dir(path))
 }
 
-pub fn get_parquet_readers(path: &Path) -> ParquetReadersResult {
+fn get_parquet_readers(path: &Path) -> Result<Vec<ParquetFileReader>, String> {
     let mut vec = Vec::new();
 
     for p in walk_parquet(path) {
@@ -67,6 +67,66 @@ pub fn get_parquet_readers(path: &Path) -> ParquetReadersResult {
     }
 
     Ok(vec)
+}
+
+pub struct ParquetFile {
+    files: Vec<ParquetFileReader>,
+}
+
+impl ParquetFile {
+    pub fn new(files: Vec<ParquetFileReader>) -> Self {
+        Self { files }
+    }
+
+    pub fn num_files(&self) -> usize {
+        self.files.len()
+    }
+
+    pub fn metadata(&self, i: usize) -> Option<ParquetMetaDataPtr> {
+        self.files.get(i).map(FileReader::metadata)
+    }
+
+    pub fn to_row_iter(&self) -> ParquetRowIteratorResult {
+        ParquetRowIterator::of(&self.files)
+    }
+
+    pub fn file_metadata_num_rows(&self, i: usize) -> usize {
+        self.metadata(i)
+            .map(|m| m.file_metadata())
+            .map(|m| m.num_rows())
+            .unwrap_or(0) as usize
+    }
+
+    pub fn file_iterator_num_rows(&self, i: usize) -> usize {
+        match self.files.get(i) {
+            Some(f) => f.get_row_iter(None).ok().map(Iterator::count).unwrap_or(0),
+            None => 0,
+        }
+    }
+
+    #[allow(clippy::op_ref)]
+    pub fn file_num_rows(&self, i: usize) -> usize {
+        Some(self.file_metadata_num_rows(i))
+            .filter(|c| c > &0)
+            .unwrap_or_else(|| self.file_iterator_num_rows(i))
+    }
+
+    pub fn num_rows(&self) -> usize {
+        let mut count = 0;
+
+        for i in 0..self.num_files() {
+            count += self.file_num_rows(i);
+        }
+
+        count
+    }
+
+    pub fn of(path: &Path) -> Result<ParquetFile, String> {
+        let files = get_parquet_readers(path)?;
+        let parquet = ParquetFile::new(files);
+
+        Ok(parquet)
+    }
 }
 
 pub struct ParquetRowIterator<'a> {
