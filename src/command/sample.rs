@@ -5,18 +5,21 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use parquet::file::metadata::ParquetMetaDataPtr;
 use parquet::record::Row as ParquetRow;
 use parquet::record::RowFormatter;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+use std::collections::HashSet;
 use std::io::Write;
 
 pub fn def() -> App<'static, 'static> {
     SubCommand::with_name("sample")
-        .about("Sample parquet data")
+        .about("Randomly sample rows from parquet")
         .arg(
-            Arg::with_name("limit")
+            Arg::with_name("sample")
                 .validator(args::validate_number)
                 .help("Sample size limit")
                 .default_value("100")
-                .long("limit")
-                .short("l"),
+                .long("sample")
+                .short("s"),
         )
         .arg(
             Arg::with_name("format")
@@ -57,17 +60,32 @@ fn metadata_headers(metadata: &ParquetMetaDataPtr) -> Vec<String> {
     headers
 }
 
+fn sample_indexes(sample: usize, size: usize) -> HashSet<usize> {
+    let mut vec = (0..size).collect::<Vec<_>>();
+    let mut rng = thread_rng();
+
+    vec.shuffle(&mut rng);
+
+    vec.iter().take(sample).cloned().collect()
+}
+
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
-    let limit = args::usize_value(matches, "limit")?;
+    let sample = args::usize_value(matches, "sample")?;
     let path = args::path_value(matches, "path")?;
     let parquet = ParquetFile::of(path)?;
     let metadata = parquet.metadata(0);
     let rows = parquet.to_row_iter()?;
-    let iter = rows.take(limit).map(|r| format(&r));
 
     match metadata {
         Some(meta) => {
+            let size = parquet.num_rows();
             let headers = metadata_headers(&meta);
+            let indexes = sample_indexes(sample, size);
+            let iter = rows
+                .enumerate()
+                .filter(|t| indexes.contains(&t.0))
+                .map(|r| format(&r.1));
+
             let mut writer = TableOutputWriter::new(headers, iter);
 
             writer.write(out)
