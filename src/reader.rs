@@ -25,13 +25,13 @@ fn is_parquet_file(entry: &DirEntry) -> bool {
 
 #[inline]
 fn open_file(path: &Path) -> Result<File, String> {
-    File::open(path).map_err(|e| format!("{} {}", path.display(), e))
+    File::open(path).map_err(|e| format!("{} >>> {}", path.display(), e))
 }
 
 #[inline]
 fn create_parquet_reader(path: &Path) -> ParquetReaderResult {
     SerializedFileReader::new(open_file(path)?)
-        .map_err(|e| format!("{} - {}", path.display(), e))
+        .map_err(|e| format!("{} >>> {}", path.display(), e))
 }
 
 #[inline]
@@ -313,7 +313,7 @@ mod tests {
         assert_eq!(
             result_err.err().unwrap(),
             format!(
-                "{} - Parquet error: Invalid Parquet file. Size is smaller than footer",
+                "{} >>> Parquet error: Invalid Parquet file. Size is smaller than footer",
                 path3.to_string_lossy()
             )
         );
