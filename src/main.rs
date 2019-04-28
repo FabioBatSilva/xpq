@@ -34,6 +34,6 @@ fn main() {
         ]);
 
     if let Err(e) = run(app.get_matches()) {
-        panic!("Application error: {}", e);
+        eprintln!("{}", e);
     }
 }
