@@ -1,8 +1,7 @@
 use crate::command::args;
 use crate::output::TableOutputWriter;
-use crate::reader::get_parquet_readers;
+use crate::reader::ParquetFile;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use parquet::file::reader::FileReader;
 use std::io::Write;
 
 pub fn def() -> App<'static, 'static> {
@@ -25,21 +24,10 @@ pub fn def() -> App<'static, 'static> {
         )
 }
 
-fn count_file(reader: &FileReader) -> Result<i64, String> {
-    let metadata = reader.metadata().file_metadata();
-    let count = metadata.num_rows();
-
-    Ok(count)
-}
-
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let path = args::path_value(matches, "path")?;
-    let readers = get_parquet_readers(path)?;
-    let mut count: i64 = 0;
-
-    for p in readers {
-        count += count_file(&p)?;
-    }
+    let parquet = ParquetFile::of(path)?;
+    let count = parquet.num_rows();
 
     let headers = vec![String::from("COUNT")];
     let values = vec![vec![format!("{}", count)]];
@@ -48,4 +36,53 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let mut writer = TableOutputWriter::new(headers, iter);
 
     writer.write(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+    use std::str;
+    use utils::test_utils;
+
+    #[test]
+    fn test_count_simple_messages() {
+        let mut output = Cursor::new(Vec::new());
+        let parquet = test_utils::temp_file("msg", ".parquet");
+        let expected = vec![" COUNT ", " 2 ", ""].join("\n");
+
+        let subcomand = def();
+        let arg_vec = vec!["count", parquet.path().to_str().unwrap()];
+        let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
+
+        {
+            let msg1 = test_utils::SimpleMessage {
+                field_int32: 1,
+                field_int64: 2,
+                field_float: 3.3,
+                field_double: 4.4,
+                field_string: "5".to_string(),
+                field_boolean: true,
+                field_timestamp: vec![0, 0, 2_454_923],
+            };
+            let msg2 = test_utils::SimpleMessage {
+                field_int32: 11,
+                field_int64: 22,
+                field_float: 33.3,
+                field_double: 44.4,
+                field_string: "55".to_string(),
+                field_boolean: false,
+                field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+            };
+
+            test_utils::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
+
+            assert_eq!(true, run(&args, &mut output).is_ok());
+        }
+
+        let vec = output.into_inner();
+        let actual = str::from_utf8(&vec).unwrap();
+
+        assert_eq!(actual, expected);
+    }
 }
