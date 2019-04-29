@@ -13,6 +13,18 @@ pub fn path_value<'a>(
         .ok_or_else(|| format!("Invalid argument : {}", name))
 }
 
+pub fn string_values(
+    matches: &ArgMatches,
+    name: &str,
+) -> Result<Option<Vec<String>>, String> {
+    matches
+        .values_of(name)
+        .map(|v| v.map(String::from).collect::<Vec<_>>())
+        .or_else(|| Some(vec![]))
+        .map(|vec| Some(vec).filter(|v| !v.is_empty()))
+        .ok_or_else(|| format!("Invalid argument : {}", name))
+}
+
 pub fn usize_value(matches: &ArgMatches, name: &str) -> Result<usize, String> {
     matches
         .value_of(name)
@@ -81,6 +93,24 @@ mod tests {
     }
 
     #[test]
+    fn test_args_string_values() {
+        let name = "values";
+        let present = create_mult_matches(name, &[name, "1", "2", "3"]);
+        let missing = create_mult_matches(name, &[name]);
+
+        assert_eq!(
+            Ok(Some(vec![
+                String::from("1"),
+                String::from("2"),
+                String::from("3")
+            ])),
+            string_values(&present, name)
+        );
+
+        assert_eq!(Ok(None), string_values(&missing, name));
+    }
+
+    #[test]
     fn test_args_path_value() {
         let name = "path";
         let tmp = test_utils::temp_file("tmp", ".file");
@@ -99,6 +129,13 @@ mod tests {
         App::new(name)
             .arg(Arg::with_name(name).index(1).required(true))
             .get_matches_from_safe(vec![name, value])
+            .unwrap()
+    }
+
+    fn create_mult_matches<'a>(name: &'a str, values: &[&str]) -> ArgMatches<'a> {
+        App::new(name)
+            .arg(Arg::with_name(name).index(1).required(false).multiple(true))
+            .get_matches_from_safe(values)
             .unwrap()
     }
 }
