@@ -3,8 +3,6 @@ use crate::output::TableOutputWriter;
 use crate::reader::ParquetFile;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use parquet::file::metadata::ParquetMetaDataPtr;
-use parquet::record::Row as ParquetRow;
-use parquet::record::RowFormatter;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::HashSet;
@@ -13,6 +11,14 @@ use std::io::Write;
 pub fn def() -> App<'static, 'static> {
     SubCommand::with_name("sample")
         .about("Randomly sample rows from parquet")
+        .arg(
+            Arg::with_name("columns")
+                .help("Select columns from parquet")
+                .takes_value(true)
+                .long("columns")
+                .multiple(true)
+                .short("c"),
+        )
         .arg(
             Arg::with_name("sample")
                 .validator(args::validate_number)
@@ -38,26 +44,24 @@ pub fn def() -> App<'static, 'static> {
         )
 }
 
-fn format(row: &ParquetRow) -> Vec<String> {
-    let mut values = Vec::new();
+fn metadata_headers(
+    metadata: &ParquetMetaDataPtr,
+    columns: &Option<Vec<String>>,
+) -> Vec<String> {
+    match columns {
+        Some(headers) => headers.clone(),
+        None => {
+            let file_metadata = metadata.file_metadata();
+            let schema = file_metadata.schema();
+            let mut headers = Vec::new();
 
-    for i in 0..row.len() {
-        values.push(format!("{}", row.fmt(i)));
+            for field in schema.get_fields() {
+                headers.push(String::from(field.name()));
+            }
+
+            headers
+        }
     }
-
-    values
-}
-
-fn metadata_headers(metadata: &ParquetMetaDataPtr) -> Vec<String> {
-    let file_metadata = metadata.file_metadata();
-    let schema = file_metadata.schema();
-    let mut headers = Vec::new();
-
-    for field in schema.get_fields() {
-        headers.push(String::from(field.name()));
-    }
-
-    headers
 }
 
 fn sample_indexes(sample: usize, size: usize) -> HashSet<usize> {
@@ -70,21 +74,22 @@ fn sample_indexes(sample: usize, size: usize) -> HashSet<usize> {
 }
 
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
+    let columns = args::string_values(matches, "columns")?;
     let sample = args::usize_value(matches, "sample")?;
     let path = args::path_value(matches, "path")?;
     let parquet = ParquetFile::of(path)?;
     let metadata = parquet.metadata(0);
-    let rows = parquet.to_row_iter()?;
+    let rows = parquet.to_row_fmt_iter(columns.clone())?;
 
     match metadata {
         Some(meta) => {
             let size = parquet.num_rows();
-            let headers = metadata_headers(&meta);
+            let headers = metadata_headers(&meta, &columns);
             let indexes = sample_indexes(sample, size);
             let iter = rows
                 .enumerate()
                 .filter(|t| indexes.contains(&t.0))
-                .map(|r| format(&r.1));
+                .map(|r| r.1);
 
             let mut writer = TableOutputWriter::new(headers, iter);
 
@@ -152,6 +157,53 @@ mod tests {
 
             assert_eq!(true, run(&args, &mut output).is_ok());
         }
+
+        let vec = output.into_inner();
+        let actual = str::from_utf8(&vec).unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_sample_simple_messages_columns() {
+        let mut output = Cursor::new(Vec::new());
+        let parquet = test_utils::temp_file("msg", ".parquet");
+        let path_str = parquet.path().to_str().unwrap();
+        let path = parquet.path();
+        let expected = vec![
+            " field_boolean  field_int32 ",
+            " true           1 ",
+            " false          11 ",
+            "",
+        ]
+        .join("\n");
+
+        let subcomand = def();
+        let arg_vec = vec!["sample", path_str, "-c=field_boolean", "-c=field_int32"];
+        let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
+
+        let msg1 = test_utils::SimpleMessage {
+            field_int32: 1,
+            field_int64: 2,
+            field_float: 3.3,
+            field_double: 4.4,
+            field_string: "5".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![0, 0, 2_454_923],
+        };
+        let msg2 = test_utils::SimpleMessage {
+            field_int32: 11,
+            field_int64: 22,
+            field_float: 33.3,
+            field_double: 44.4,
+            field_string: "55".to_string(),
+            field_boolean: false,
+            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+        };
+
+        test_utils::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+
+        assert_eq!(true, run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
