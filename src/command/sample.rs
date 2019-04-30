@@ -2,7 +2,6 @@ use crate::command::args;
 use crate::output::TableOutputWriter;
 use crate::reader::ParquetFile;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use parquet::file::metadata::ParquetMetaDataPtr;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::HashSet;
@@ -44,26 +43,6 @@ pub fn def() -> App<'static, 'static> {
         )
 }
 
-fn metadata_headers(
-    metadata: &ParquetMetaDataPtr,
-    columns: &Option<Vec<String>>,
-) -> Vec<String> {
-    match columns {
-        Some(headers) => headers.clone(),
-        None => {
-            let file_metadata = metadata.file_metadata();
-            let schema = file_metadata.schema();
-            let mut headers = Vec::new();
-
-            for field in schema.get_fields() {
-                headers.push(String::from(field.name()));
-            }
-
-            headers
-        }
-    }
-}
-
 fn sample_indexes(sample: usize, size: usize) -> HashSet<usize> {
     let mut vec = (0..size).collect::<Vec<_>>();
     let mut rng = thread_rng();
@@ -78,25 +57,19 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let sample = args::usize_value(matches, "sample")?;
     let path = args::path_value(matches, "path")?;
     let parquet = ParquetFile::of(path)?;
-    let metadata = parquet.metadata(0);
-    let rows = parquet.to_row_fmt_iter(columns.clone())?;
+    let rows = parquet.to_row_fmt_iter(columns)?;
+    let headers = rows.field_names();
 
-    match metadata {
-        Some(meta) => {
-            let size = parquet.num_rows();
-            let headers = metadata_headers(&meta, &columns);
-            let indexes = sample_indexes(sample, size);
-            let iter = rows
-                .enumerate()
-                .filter(|t| indexes.contains(&t.0))
-                .map(|r| r.1);
+    let size = parquet.num_rows();
+    let indexes = sample_indexes(sample, size);
+    let iter = rows
+        .enumerate()
+        .filter(|t| indexes.contains(&t.0))
+        .map(|r| r.1);
 
-            let mut writer = TableOutputWriter::new(headers, iter);
+    let mut writer = TableOutputWriter::new(headers, iter);
 
-            writer.write(out)
-        }
-        None => Ok(()),
-    }
+    writer.write(out)
 }
 
 #[cfg(test)]

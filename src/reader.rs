@@ -71,37 +71,36 @@ fn get_parquet_readers(path: &Path) -> Result<Vec<ParquetFileReader>, String> {
     Ok(vec)
 }
 
-fn get_field_indexes(
+fn get_row_fields(
     reader: &ParquetFileReader,
     columns: Option<Vec<String>>,
-) -> Vec<usize> {
+) -> Vec<(usize, String)> {
     let metadata = reader.metadata().file_metadata();
     let schema = metadata.schema();
-    let mut indexes = Vec::new();
+    let mut result = Vec::new();
+    let fields = schema.get_fields();
+    let enumerate = fields.iter().enumerate();
 
     match columns {
         Some(names) => {
-            let fields = schema
-                .get_fields()
-                .iter()
-                .enumerate()
+            let map = enumerate
                 .map(|t| (t.1.name().to_lowercase(), t.0))
                 .collect::<HashMap<_, _>>();
 
             for name in names {
-                if let Some(index) = fields.get(&name.to_lowercase()) {
-                    indexes.push(*index);
+                if let Some(index) = map.get(&name.to_lowercase()) {
+                    result.push((*index, String::from(fields[*index].name())));
                 }
             }
         }
         None => {
-            for index in 0..schema.get_fields().len() {
-                indexes.push(index);
+            for (index, field) in enumerate {
+                result.push((index, String::from(field.name())));
             }
         }
     }
 
-    indexes
+    result
 }
 
 pub struct ParquetFile {
@@ -127,12 +126,12 @@ impl ParquetFile {
 
     pub fn to_row_fmt_iter(
         &self,
-        fields: Option<Vec<String>>,
+        field_names: Option<Vec<String>>,
     ) -> Result<ParquetRowFormatterIterator, String> {
         let row_iter = self.to_row_iter()?;
-        let columns = get_field_indexes(&self.files[0], fields);
+        let fields = get_row_fields(&self.files[0], field_names);
 
-        Ok(ParquetRowFormatterIterator::new(row_iter, columns))
+        Ok(ParquetRowFormatterIterator::new(row_iter, fields))
     }
 
     pub fn file_metadata_num_rows(&self, i: usize) -> usize {
@@ -215,18 +214,22 @@ impl<'a> Iterator for ParquetRowIterator<'a> {
 
 pub struct ParquetRowFormatterIterator<'a> {
     iter: ParquetRowIterator<'a>,
-    columns: Vec<usize>,
+    fields: Vec<(usize, String)>,
 }
 
 impl<'a> ParquetRowFormatterIterator<'a> {
-    pub fn new(iter: ParquetRowIterator<'a>, columns: Vec<usize>) -> Self {
-        Self { iter, columns }
+    pub fn new(iter: ParquetRowIterator<'a>, fields: Vec<(usize, String)>) -> Self {
+        Self { iter, fields }
+    }
+
+    pub fn field_names(&self) -> Vec<String> {
+        self.fields.iter().map(|e| e.1.clone()).collect()
     }
 
     fn format(&self, row: &Row) -> Vec<String> {
-        self.columns
+        self.fields
             .iter()
-            .map(|i| format!("{}", row.fmt(*i)))
+            .map(|e| format!("{}", row.fmt(e.0)))
             .collect()
     }
 }
@@ -392,7 +395,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_field_indexes() {
+    fn test_get_row_fields() {
         let dir = test_utils::temp_dir();
         let path = dir.path().join("1.snappy.parquet");
 
@@ -411,8 +414,8 @@ mod tests {
         test_utils::write_simple_messages_parquet(&path, &[&msg]);
 
         let reader = create_parquet_reader(&path).unwrap();
-        let result1 = get_field_indexes(&reader, None);
-        let result2 = get_field_indexes(
+        let result1 = get_row_fields(&reader, None);
+        let result2 = get_row_fields(
             &reader,
             Some(vec![
                 String::from("field_timestamp"),
@@ -422,10 +425,28 @@ mod tests {
         );
 
         assert_eq!(result1.len(), 7);
-        assert_eq!(result1, vec![0, 1, 2, 3, 4, 5, 6]);
+        assert_eq!(
+            result1,
+            vec![
+                (0, String::from("field_int32")),
+                (1, String::from("field_int64")),
+                (2, String::from("field_float")),
+                (3, String::from("field_double")),
+                (4, String::from("field_string")),
+                (5, String::from("field_boolean")),
+                (6, String::from("field_timestamp"))
+            ]
+        );
 
         assert_eq!(result2.len(), 3);
-        assert_eq!(result2, vec![6, 1, 0]);
+        assert_eq!(
+            result2,
+            vec![
+                (6, String::from("field_timestamp")),
+                (1, String::from("field_int64")),
+                (0, String::from("field_int32"))
+            ]
+        );
     }
 
     #[test]
@@ -516,12 +537,14 @@ mod tests {
 
         let fields = vec![String::from("field_int32"), String::from("field_int64")];
         let parquet = ParquetFile::of(&path).unwrap();
-        let row_iter = parquet.to_row_fmt_iter(Some(fields)).unwrap();
+        let row_iter = parquet.to_row_fmt_iter(Some(fields.clone())).unwrap();
+        let field_names = row_iter.field_names();
         let values = row_iter.collect::<Vec<_>>();
 
         assert_eq!(values.len(), 2);
 
         assert_eq!(values[0], vec!["1", "2"]);
         assert_eq!(values[1], vec!["11", "22"]);
+        assert_eq!(field_names, fields.clone());
     }
 }
