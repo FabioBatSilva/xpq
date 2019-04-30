@@ -15,6 +15,7 @@ fn run(matches: ArgMatches) -> Result<(), String> {
     let out = &mut std::io::stdout();
 
     match matches.subcommand() {
+        ("read", Some(m)) => command::read::run(m, out),
         ("schema", Some(m)) => command::schema::run(m, out),
         ("sample", Some(m)) => command::sample::run(m, out),
         ("count", Some(m)) => command::count::run(m, out),
@@ -29,6 +30,7 @@ fn main() {
         .author("Fabio B. Silva <fabio.bat.silva@gmail.com>")
         .about("Parquet command line toolkit written in Rust")
         .subcommands(vec![
+            command::read::def(),
             command::count::def(),
             command::schema::def(),
             command::sample::def(),

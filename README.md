@@ -23,6 +23,7 @@ cargo install --path .
 
 ### Available commands
 
+* **read** - Read rows.
 * **count** - Show num of rows.
 * **schema** - Show parquet schema.
 * **sample** - Randomly sample rows from parquet.
@@ -59,7 +60,7 @@ xpq count users.parquet
 
 Read some data :
 ```
-xpq sample users.parquet
+xpq read users.parquet
 
  name      favorite_color  favorite_numbers
  "Alyssa"  null            [3, 9, 15, 20]
