@@ -2,7 +2,7 @@
 name = "xpq"
 version = "0.1.0-SNAPSHOT"
 authors = ["Fabio B. Silva <fabio.bat.silva@gmail.com>"]
-description = "Simple Parquet command line toolkit written in Rust."
+description = "Simple Parquet command line toolkit."
 documentation = "https://github.com/FabioBatSilva/xpq"
 repository = "https://github.com/FabioBatSilva/xpq"
 homepage = "https://github.com/FabioBatSilva/xpq"
