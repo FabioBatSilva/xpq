@@ -5,6 +5,7 @@ extern crate rand;
 extern crate walkdir;
 
 use clap::{App, AppSettings, ArgMatches};
+use std::process;
 
 mod command;
 mod output;
@@ -25,10 +26,10 @@ fn run(matches: ArgMatches) -> Result<(), String> {
 
 fn main() {
     let app = App::new("pq")
-        .version("0.1.0")
+        .version("0.1.0-SNAPSHOT")
         .setting(AppSettings::ArgRequiredElseHelp)
         .author("Fabio B. Silva <fabio.bat.silva@gmail.com>")
-        .about("Parquet command line toolkit written in Rust")
+        .about("Simple Parquet command line toolkit.")
         .subcommands(vec![
             command::read::def(),
             command::count::def(),
@@ -38,5 +39,6 @@ fn main() {
 
     if let Err(e) = run(app.get_matches()) {
         eprintln!("{}", e);
+        process::exit(1);
     }
 }
