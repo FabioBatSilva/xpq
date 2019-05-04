@@ -25,7 +25,7 @@ fn run(matches: ArgMatches) -> Result<(), String> {
 }
 
 fn main() {
-    let app = App::new("pq")
+    let app = App::new("xpq")
         .version("0.1.0-SNAPSHOT")
         .setting(AppSettings::ArgRequiredElseHelp)
         .author("Fabio B. Silva <fabio.bat.silva@gmail.com>")
