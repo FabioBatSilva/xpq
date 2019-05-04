@@ -33,12 +33,10 @@ chmod +x ./xpq
 mv ./xpq /usr/local/bin/xpq
 ```
 
-You can also compile from source by
+You can also compile from source using cargo
 
 ```bash
-git clone git://github.com/FabioBatSilva/xpq
-cd xpq
-cargo install --path .
+cargo install --git https://github.com/FabioBatSilva/xpq.git --force
 ```
 
 ### Available commands
