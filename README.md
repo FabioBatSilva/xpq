@@ -50,7 +50,7 @@ cargo install --path .
 
 ### Quick tour
 
-Grab the some parquet data :
+Grab some parquet data :
 
 ```
 wget -O users.parquet https://github.com/apache/spark/blob/master/examples/src/main/resources/users.parquet?raw=true
