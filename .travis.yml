@@ -30,16 +30,18 @@ install:
 script:
 - cargo clippy --all-targets --all-features -- -D warnings
 - cargo fmt --all -- --check
-- cross test --target $TARGET
+- RUST_BACKTRACE=full cross test --target $TARGET
 
 before_deploy:
 - cross rustc --target $TARGET --release -- -C lto
-- cp target/$TARGET/release/xpq target/release/$TRAVIS_TAG-$CRATE_NAME-$TARGET
+- cp target/$TARGET/release/xpq target/$CRATE_NAME-$TRAVIS_TAG-$TARGET
 
 deploy:
   provider: releases
+  skip_cleanup: true
+  overwrite: true
   api_key:
     secure: bop6vddMvAGeOA/I4k2CR4Mev3K2hHmGI9nxOWl9DhN7HMHLn+h5RyHBTQSVJTUzhc5e56wzxHqfjDnS7F4Af12Y0pR1U8ogQymzVyRWl8UKwiX6mMhgNU7dWM50FWy2ftsDQcqabrBU2Px9r0gHppSLWm7JI3WqOASE7R6PX1VgWTi3MLh9JPR0vIaj1ulVSy2XiG7hyC0BnNUtRCrD2KTHaSBLQRuFyfa/BI+cIGtoNpboHef1eNymSW1Ybjpy2fnjtlsYlgwlBktpP2Dd+XmIqiJrwofK3f3ADei9bv/KeXy4mrG9XZX1aGgio4d6NbB7p6VaryFnag8pmQRhDqAc2t3E6JwzUm0nRmlsn+SW1xWhxvfFNLwGtxAi0tSOnbjKt59n1rHYivai9dSH51I8plBO7HkEpjUPsB8ELwGl1qiC/ZVbgrI7v4lfuU8z4/iEYaq3lXCR+izYN4waEi7hG2BU6ZuitCKDlOFvF3jbtLtZDeKIM79ll+d0ooaBEzIe3g27izYn0vFnN7bZHZkJqtXwV0f32NLMBoV8kO0McbL0HdzLZYDkt16Ysrud13L0VJXvJYKoxbcm4Qf9fzk3nVpxqzmzReEcKGYIkw8wu5VrEewRAZFjIcY1J6HjMzMxNfHeX63YSPrluswaXmREcT9DVKU2NFdiTxmJU5c=
-  file: target/release/$TRAVIS_TAG-$CRATE_NAME-$TARGET
+  file: target/$CRATE_NAME-$TRAVIS_TAG-$TARGET
   on:
     tags: true
