@@ -13,7 +13,27 @@ See [Working with nightly Rust](https://github.com/rust-lang-nursery/rustup.rs/b
 to install nightly toolchain and set it as default.
 
 ### Installation
-You can compile from source by
+Binaries for Linux and macOS are available [from Github](https://github.com/FabioBatSilva/xpq/releases/latest).
+
+To install the binary download the [latest](https://github.com/FabioBatSilva/xpq/releases/latest) release.
+
+```bash
+curl -s https://api.github.com/repos/FabioBatSilva/xpq/releases/latest \
+  | grep "browser_download_url" \
+  | grep apple-darwin \
+  | cut -d : -f 2,3 \
+  | tr -d \" \
+  | wget -O xpq -qi -
+```
+
+Make it executable
+```bash
+chmod +x ./xpq
+
+mv ./xpq /usr/local/bin/xpq
+```
+
+You can also compile from source by
 
 ```bash
 git clone git://github.com/FabioBatSilva/xpq
