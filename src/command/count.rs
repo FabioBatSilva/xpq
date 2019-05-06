@@ -49,7 +49,7 @@ mod tests {
     fn test_count_simple_messages() {
         let mut output = Cursor::new(Vec::new());
         let parquet = test_utils::temp_file("msg", ".parquet");
-        let expected = vec![" COUNT ", " 2 ", ""].join("\n");
+        let expected = "COUNT\n2\n";
 
         let subcomand = def();
         let arg_vec = vec!["count", parquet.path().to_str().unwrap()];
