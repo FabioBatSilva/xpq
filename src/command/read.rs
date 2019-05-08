@@ -68,9 +68,9 @@ mod tests {
         let path_str = parquet.path().to_str().unwrap();
         let path = parquet.path();
         let expected = vec![
-            " field_int32  field_int64 ",
-            " 1            2 ",
-            " 11           22 ",
+            "field_int32  field_int64",
+            "1            2",
+            "11           22",
             "",
         ]
         .join("\n");

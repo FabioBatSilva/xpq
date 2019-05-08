@@ -95,9 +95,9 @@ mod tests {
         let mut output = Cursor::new(Vec::new());
         let parquet = test_utils::temp_file("msg", ".parquet");
         let expected = vec![
-            " field_int32  field_int64  field_float  field_double  field_string  field_boolean  field_timestamp ",
-            &format!(" 1            2            3.3          4.4           \"5\"           true           {} ", time_to_str(1_238_544_000_000)),
-            &format!(" 11           22           33.3         44.4          \"55\"          false          {} ", time_to_str(1_238_544_060_000)),
+            "field_int32  field_int64  field_float  field_double  field_string  field_boolean  field_timestamp",
+            &format!("1            2            3.3          4.4           \"5\"           true           {}", time_to_str(1_238_544_000_000)),
+            &format!("11           22           33.3         44.4          \"55\"          false          {}", time_to_str(1_238_544_060_000)),
             ""
         ]
         .join("\n");
@@ -144,9 +144,9 @@ mod tests {
         let path_str = parquet.path().to_str().unwrap();
         let path = parquet.path();
         let expected = vec![
-            " field_boolean  field_int32 ",
-            " true           1 ",
-            " false          11 ",
+            "field_boolean  field_int32",
+            "true           1",
+            "false          11",
             "",
         ]
         .join("\n");

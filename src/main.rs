@@ -1,7 +1,8 @@
 extern crate clap;
 extern crate parquet;
-extern crate prettytable;
 extern crate rand;
+extern crate tabwriter;
+extern crate unicode_width;
 extern crate walkdir;
 
 use clap::{App, AppSettings, ArgMatches};
