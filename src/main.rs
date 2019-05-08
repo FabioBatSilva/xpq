@@ -27,7 +27,7 @@ fn run(matches: ArgMatches) -> Result<(), String> {
 
 fn main() {
     let app = App::new("xpq")
-        .version("0.1.0-SNAPSHOT")
+        .version(env!("CARGO_PKG_VERSION"))
         .setting(AppSettings::ArgRequiredElseHelp)
         .author("Fabio B. Silva <fabio.bat.silva@gmail.com>")
         .about("Simple Parquet command line toolkit.")
