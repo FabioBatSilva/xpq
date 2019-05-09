@@ -43,7 +43,12 @@ fn format_row(
         .map(|e| {
             // collect max width for first x rows
             if index < batch_size {
-                width[e.0] = cmp::max(e.1.len(), width[e.0]);
+                if width.len() > e.0 {
+                    let len = UnicodeWidthStr::width(e.1.as_str());
+                    let max = cmp::max(len, width[e.0]);
+
+                    width[e.0] = max;
+                }
 
                 return e.1.to_owned();
             }
@@ -61,6 +66,8 @@ fn format_row(
 pub struct TableOutputWriter<T> {
     headers: Vec<String>,
     values: T,
+    minwidth: usize,
+    batch_size: usize,
 }
 
 impl<T> TableOutputWriter<T>
@@ -68,24 +75,27 @@ where
     T: Iterator<Item = Vec<String>>,
 {
     pub fn new(headers: Vec<String>, values: T) -> Self {
-        Self { headers, values }
+        Self {
+            headers,
+            values,
+            minwidth: 0,
+            batch_size: 500,
+        }
     }
 
     pub fn write<W: Write>(&mut self, out: &mut W) -> Result<(), String> {
-        let minwidth = 4;
-        let batch_size = 500;
         let values = &mut self.values;
-        let mut width = vec![minwidth; self.headers.len()];
-        let mut tw = TabWriter::new(out).minwidth(minwidth);
+        let mut width = vec![self.minwidth; self.headers.len()];
+        let mut tw = TabWriter::new(out).minwidth(self.minwidth);
 
-        tw.write_all(&format_row(0, batch_size, &self.headers, &mut width))
+        tw.write_all(&format_row(0, self.batch_size, &self.headers, &mut width))
             .map_err(|e| format!("Failed write headers : {}", e))?;
 
         for (i, vec) in values.enumerate() {
-            tw.write_all(&format_row(i, batch_size, &vec, &mut width))
+            tw.write_all(&format_row(i, self.batch_size, &vec, &mut width))
                 .map_err(|e| format!("Failed write row : {}", e))?;
 
-            if i > 0 && i % batch_size == 0 {
+            if i > 0 && i % self.batch_size == 0 {
                 tw.flush()
                     .map_err(|e| format!("Failed flush table : {}", e))?;
             }
@@ -125,7 +135,7 @@ mod tests {
         let batch_size = 1;
         let mut width = vec![0; 2];
         let values = vec![
-            vec!["12345".to_string(), "123456".to_string()],
+            vec!["12345".to_string(), "tÞykÂ¿".to_string()],
             vec!["123456789".to_string(), "123456789".to_string()],
             vec!["".to_string(), "".to_string()],
         ];
@@ -135,11 +145,11 @@ mod tests {
         let result3 = format_row(2, batch_size, &values[2], &mut width);
 
         assert_eq!(vec![5, 6], width);
-        assert_eq!(13, result1.len());
+        assert_eq!(16, result1.len());
         assert_eq!(13, result2.len());
         assert_eq!(13, result3.len());
 
-        assert_eq!("12345\t123456\n", str::from_utf8(&result1).unwrap());
+        assert_eq!("12345\ttÞykÂ¿\n", str::from_utf8(&result1).unwrap());
         assert_eq!("12...\t123...\n", str::from_utf8(&result2).unwrap());
         assert_eq!("     \t      \n", str::from_utf8(&result3).unwrap());
     }
@@ -163,5 +173,44 @@ mod tests {
         let expected = "c1      c2\nr1 - 1  r1 - 2\nr2 - 1  r2 - 2\n";
 
         assert_eq!(expected, actual);
+    }
+    #[test]
+    fn test_table_output_writer_write_minwidth() {
+        let mut buff = Cursor::new(Vec::new());
+        let headers: Vec<String> = vec![String::from("c")];
+        let values = vec![vec![String::from("1")], vec![String::from("2")]];
+
+        let iter = values.into_iter();
+        let mut writer = TableOutputWriter::new(headers, iter);
+
+        writer.write(&mut buff).unwrap();
+
+        let vec = buff.into_inner();
+        let actual = str::from_utf8(&vec).unwrap();
+        let expected = "c\n1\n2\n";
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_table_output_writer_write_batch() {
+        let mut buff = Cursor::new(Vec::new());
+        let headers = vec![String::from("c")];
+        let val_vec: Vec<String> = (0..1000).map(|n| format!("{}", n)).collect();
+        let values = val_vec
+            .iter()
+            .map(|n| vec![n.to_string()])
+            .collect::<Vec<_>>();
+
+        let iter = values.into_iter();
+        let mut writer = TableOutputWriter::new(headers, iter);
+
+        writer.write(&mut buff).unwrap();
+
+        let buff_vec = buff.into_inner();
+        let actual = str::from_utf8(&buff_vec).unwrap();;
+
+        // header + (values ...) + end line
+        assert_eq!(1002, actual.split('\n').count());
     }
 }
