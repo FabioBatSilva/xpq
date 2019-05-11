@@ -1,5 +1,3 @@
-**NOTICE: THIS CLIENT IS UNDER ACTIVE DEVELOPMENT, USE AT YOUR OWN RISK**
-
 # xpq
 xpq is a simple command line program for analyzing parquet files.
 
