@@ -76,7 +76,7 @@ mod tests {
         .join("\n");
 
         let subcomand = def();
-        let arg_vec = vec!["read", path_str, "-l=2", "-c=field_int32", "-c=field_int64"];
+        let arg_vec = vec!["read", path_str, "-l=2", "-c=field_int32,field_int64"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
         let msg1 = test_utils::SimpleMessage {

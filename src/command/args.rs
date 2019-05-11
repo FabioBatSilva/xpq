@@ -19,7 +19,11 @@ pub fn string_values(
 ) -> Result<Option<Vec<String>>, String> {
     matches
         .values_of(name)
-        .map(|v| v.map(String::from).collect::<Vec<_>>())
+        .map(|v| {
+            v.flat_map(|s| s.split(','))
+                .map(String::from)
+                .collect::<Vec<_>>()
+        })
         .or_else(|| Some(vec![]))
         .map(|vec| Some(vec).filter(|v| !v.is_empty()))
         .ok_or_else(|| format!("Invalid argument : {}", name))
@@ -108,6 +112,34 @@ mod tests {
         );
 
         assert_eq!(Ok(None), string_values(&missing, name));
+    }
+
+    #[test]
+    fn test_args_string_values_comma_separated() {
+        let name = "values";
+        let result1 = create_mult_matches(name, &[name, "1,2,3,4,5"]);
+        let result2 = create_mult_matches(name, &[name, "aa", "bb,cc", "dd"]);
+
+        assert_eq!(
+            Ok(Some(vec![
+                String::from("1"),
+                String::from("2"),
+                String::from("3"),
+                String::from("4"),
+                String::from("5"),
+            ])),
+            string_values(&result1, name)
+        );
+
+        assert_eq!(
+            Ok(Some(vec![
+                String::from("aa"),
+                String::from("bb"),
+                String::from("cc"),
+                String::from("dd"),
+            ])),
+            string_values(&result2, name)
+        );
     }
 
     #[test]
