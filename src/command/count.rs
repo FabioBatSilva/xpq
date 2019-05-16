@@ -26,11 +26,11 @@ pub fn def() -> App<'static, 'static> {
 
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let path = args::path_value(matches, "path")?;
-    let parquet = ParquetFile::of(path)?;
+    let parquet = ParquetFile::from(path);
     let count = parquet.num_rows();
 
     let headers = vec![String::from("COUNT")];
-    let values = vec![vec![format!("{}", count)]];
+    let values = vec![Ok(vec![format!("{}", count)])];
 
     let iter = values.into_iter();
     let mut writer = TableOutputWriter::new(headers, iter);

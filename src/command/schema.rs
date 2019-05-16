@@ -26,20 +26,14 @@ pub fn def() -> App<'static, 'static> {
 
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let path = args::path_value(matches, "path")?;
-    let parquet = ParquetFile::of(path)?;
-    let metadata = parquet.metadata(0);
+    let parquet = ParquetFile::from(path);
+    let metadata = parquet.metadata()?;
+    let file_meta = metadata.file_metadata();
+    let schema = file_meta.schema();
 
-    match metadata {
-        Some(metadata) => {
-            let file_meta = metadata.file_metadata();
-            let schema = file_meta.schema();
+    print_schema(out, &schema);
 
-            print_schema(out, &schema);
-
-            Ok(())
-        }
-        None => Ok(()),
-    }
+    Ok(())
 }
 
 #[cfg(test)]

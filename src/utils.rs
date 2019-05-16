@@ -1,7 +1,9 @@
 #[cfg(test)]
 pub mod test_utils {
+    extern crate chrono;
     extern crate tempfile;
 
+    use self::chrono::{Local, TimeZone};
     use self::tempfile::{Builder, NamedTempFile, TempDir};
     use std::iter;
     use std::{fs, path::Path, rc::Rc};
@@ -37,6 +39,13 @@ pub mod test_utils {
             OPTIONAL INT96 field_timestamp;
         }
         ";
+
+    pub fn time_to_str(value: u64) -> String {
+        let dt = Local.timestamp((value / 1000) as i64, 0);
+        let s = format!("{}", dt.format("%Y-%m-%d %H:%M:%S %:z"));
+
+        s
+    }
 
     pub fn temp_file(name: &str, suffix: &str) -> NamedTempFile {
         Builder::new()
