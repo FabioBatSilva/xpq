@@ -44,11 +44,10 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let columns = args::string_values(matches, "columns")?;
     let limit = args::usize_value(matches, "limit")?;
     let path = args::path_value(matches, "path")?;
-    let parquet = ParquetFile::of(path)?;
-    let rows = parquet.to_row_fmt_iter(columns)?;
-    let headers = rows.field_names();
+    let parquet = ParquetFile::from((path, columns));
+    let headers = parquet.field_names()?;
 
-    let iter = rows.take(limit);
+    let iter = parquet.iter().take(limit);
     let mut writer = TableOutputWriter::new(headers, iter);
 
     writer.write(out)

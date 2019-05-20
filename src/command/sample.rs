@@ -56,11 +56,11 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
     let columns = args::string_values(matches, "columns")?;
     let sample = args::usize_value(matches, "sample")?;
     let path = args::path_value(matches, "path")?;
-    let parquet = ParquetFile::of(path)?;
-    let rows = parquet.to_row_fmt_iter(columns)?;
-    let headers = rows.field_names();
-
+    let parquet = ParquetFile::from((path, columns));
+    let headers = parquet.field_names()?;
     let size = parquet.num_rows();
+
+    let rows = parquet.iter();
     let indexes = sample_indexes(sample, size);
     let iter = rows
         .enumerate()
@@ -74,21 +74,11 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    extern crate chrono;
-
-    use self::chrono::{Local, TimeZone};
     use super::*;
     use std::io::Cursor;
     use std::str;
     use utils::test_utils;
-
-    #[inline]
-    fn time_to_str(value: u64) -> String {
-        let dt = Local.timestamp((value / 1000) as i64, 0);
-        let s = format!("{}", dt.format("%Y-%m-%d %H:%M:%S %:z"));
-
-        s
-    }
+    use utils::test_utils::time_to_str;
 
     #[test]
     fn test_sample_simple_messages() {

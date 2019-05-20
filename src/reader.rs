@@ -5,75 +5,38 @@ use parquet::record::reader::RowIter;
 use parquet::record::Row;
 use parquet::record::RowFormatter;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
 
 pub type ParquetFileReader = SerializedFileReader<File>;
-pub type ParquetReaderResult = Result<ParquetFileReader, String>;
-pub type ParquetRowIteratorResult<'a> = Result<ParquetRowIterator<'a>, String>;
-
-fn is_parquet_file(entry: &DirEntry) -> bool {
-    if !entry.path().is_file() {
-        return false;
-    }
-
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| s.ends_with(".parquet"))
-        .unwrap_or(false)
-}
 
 #[inline]
-fn open_file(path: &Path) -> Result<File, String> {
-    File::open(path).map_err(|e| format!("{} >>> {}", path.display(), e))
-}
-
-#[inline]
-fn create_parquet_reader(path: &Path) -> ParquetReaderResult {
-    SerializedFileReader::new(open_file(path)?)
+fn create_parquet_reader(path: &Path) -> Result<ParquetFileReader, String> {
+    SerializedFileReader::try_from(path)
         .map_err(|e| format!("{} >>> {}", path.display(), e))
 }
 
 #[inline]
-fn create_row_iter(reader: &ParquetFileReader) -> Result<RowIter, String> {
-    reader
-        .get_row_iter(None)
-        .map_err(|e| format!("Failed iterate parquet file : {}", e))
+fn file_metadata_num_rows(reader: &ParquetFileReader) -> usize {
+    let metadata = reader.metadata();
+    let file_meta = metadata.file_metadata();
+
+    file_meta.num_rows() as usize
 }
 
 #[inline]
-fn walk_parquet_dir(path: &Path) -> Vec<PathBuf> {
-    WalkDir::new(path)
-        .contents_first(true)
-        .into_iter()
-        .filter_entry(is_parquet_file)
-        .filter_map(Result::ok)
-        .map(DirEntry::into_path)
-        .collect::<Vec<_>>()
+fn file_iterator_num_rows(reader: ParquetFileReader) -> usize {
+    let iter = reader.into_iter();
+
+    iter.count()
 }
 
-fn walk_parquet(path: &Path) -> Vec<PathBuf> {
-    Some(Path::new(&path))
-        .filter(|p| p.is_file())
-        .map(|p| vec![p.to_path_buf()])
-        .unwrap_or_else(|| walk_parquet_dir(path))
-}
-
-fn get_parquet_readers(path: &Path) -> Result<Vec<ParquetFileReader>, String> {
-    let mut vec = Vec::new();
-
-    for p in walk_parquet(path) {
-        vec.push(create_parquet_reader(&p)?);
-    }
-
-    Ok(vec)
-}
-
+#[inline]
 fn get_row_fields(
     reader: &ParquetFileReader,
-    columns: Option<Vec<String>>,
+    columns: &Option<Vec<String>>,
 ) -> Vec<(usize, String)> {
     let metadata = reader.metadata().file_metadata();
     let schema = metadata.schema();
@@ -104,126 +67,135 @@ fn get_row_fields(
 }
 
 pub struct ParquetFile {
-    files: Vec<ParquetFileReader>,
+    path: PathBuf,
+    fields: Option<Vec<String>>,
 }
 
 impl ParquetFile {
-    pub fn new(files: Vec<ParquetFileReader>) -> Self {
-        Self { files }
+    pub fn new(path: PathBuf) -> Self {
+        Self { path, fields: None }
     }
 
-    pub fn num_files(&self) -> usize {
-        self.files.len()
-    }
-
-    pub fn metadata(&self, i: usize) -> Option<ParquetMetaDataPtr> {
-        self.files.get(i).map(FileReader::metadata)
-    }
-
-    pub fn to_row_iter(&self) -> ParquetRowIteratorResult {
-        ParquetRowIterator::of(&self.files)
-    }
-
-    pub fn to_row_fmt_iter(
-        &self,
-        field_names: Option<Vec<String>>,
-    ) -> Result<ParquetRowFormatterIterator, String> {
-        let row_iter = self.to_row_iter()?;
-        let fields = get_row_fields(&self.files[0], field_names);
-
-        Ok(ParquetRowFormatterIterator::new(row_iter, fields))
-    }
-
-    pub fn file_metadata_num_rows(&self, i: usize) -> usize {
-        self.metadata(i)
-            .map(|m| m.file_metadata())
-            .map(|m| m.num_rows())
-            .unwrap_or(0) as usize
-    }
-
-    pub fn file_iterator_num_rows(&self, i: usize) -> usize {
-        match self.files.get(i) {
-            Some(f) => f.get_row_iter(None).ok().map(Iterator::count).unwrap_or(0),
-            None => 0,
+    pub fn with_fields(self, fields: Option<Vec<String>>) -> Self {
+        Self {
+            fields,
+            path: self.path,
         }
-    }
-
-    #[allow(clippy::op_ref)]
-    pub fn file_num_rows(&self, i: usize) -> usize {
-        Some(self.file_metadata_num_rows(i))
-            .filter(|c| c > &0)
-            .unwrap_or_else(|| self.file_iterator_num_rows(i))
     }
 
     pub fn num_rows(&self) -> usize {
-        let mut count = 0;
+        self.files()
+            .map(|p| create_parquet_reader(p.as_path()))
+            .filter_map(Result::ok)
+            .map(|r| {
+                let meta_num_rouws = file_metadata_num_rows(&r);
 
-        for i in 0..self.num_files() {
-            count += self.file_num_rows(i);
-        }
+                if meta_num_rouws > 0 {
+                    return meta_num_rouws;
+                }
 
-        count
+                file_iterator_num_rows(r)
+            })
+            .sum()
     }
 
-    pub fn of(path: &Path) -> Result<ParquetFile, String> {
-        let files = get_parquet_readers(path)?;
-        let parquet = ParquetFile::new(files);
+    pub fn field_names(&self) -> Result<Vec<String>, String> {
+        self.files()
+            .nth(0)
+            .map(|p| create_parquet_reader(p.as_path()))
+            .map(|r| {
+                let fields = get_row_fields(&r?, &self.fields);
+                let names = fields.iter().map(|e| e.1.clone()).collect();
 
-        Ok(parquet)
-    }
-}
-
-pub struct ParquetRowIterator<'a> {
-    vec: Vec<RowIter<'a>>,
-    index: usize,
-}
-
-impl<'a> ParquetRowIterator<'a> {
-    pub fn new(vec: Vec<RowIter<'a>>) -> Self {
-        Self { vec, index: 0 }
+                Ok(names)
+            })
+            .unwrap_or_else(|| Err(String::from("Failed to read parquet")))
     }
 
-    pub fn of(readers: &'a [ParquetFileReader]) -> ParquetRowIteratorResult<'a> {
-        let mut vec = Vec::new();
-
-        for r in readers {
-            vec.push(create_row_iter(r)?);
-        }
-
-        Ok(Self::new(vec))
+    pub fn metadata(&self) -> Result<ParquetMetaDataPtr, String> {
+        self.files()
+            .nth(0)
+            .map(|p| create_parquet_reader(p.as_path()))
+            .map(|r| Ok(r?.metadata()))
+            .unwrap_or_else(|| Err(String::from("Failed to read parquet")))
     }
-}
 
-impl<'a> Iterator for ParquetRowIterator<'a> {
-    type Item = Row;
+    pub fn iter(&self) -> impl Iterator<Item = Result<Vec<String>, String>> + '_ {
+        let field_names = self.fields.clone();
+        let iter = self.files();
 
-    fn next(&mut self) -> Option<Self::Item> {
-        while self.index < self.vec.len() {
-            let next = self.vec[self.index].next();
+        iter.map(move |p| -> Result<Iter<_>, String> {
+            let reader = create_parquet_reader(p.as_path())?;
+            let fields = get_row_fields(&reader, &field_names);
+            let row_iter: RowIter<'static> = reader.into_iter();
+            let iterator: Iter<_> = Iter::new(row_iter, fields);
 
-            if next.is_some() {
-                return next;
+            Ok(iterator)
+        })
+        .flat_map(|r| match r {
+            Ok(iter) => iter,
+            Err(e) => Iter::err(e),
+        })
+    }
+
+    fn files(&self) -> impl Iterator<Item = PathBuf> {
+        let is_file = self.path.is_file();
+        let is_parquet = |entry: &DirEntry| {
+            // accept partition directories
+            if entry.path().is_dir() {
+                return true;
             }
 
-            self.index += 1;
-        }
+            entry
+                .file_name()
+                .to_str()
+                .map(|s| s.ends_with(".parquet"))
+                .unwrap_or(false)
+        };
 
-        None
+        WalkDir::new(&self.path)
+            .contents_first(true)
+            .into_iter()
+            .filter_entry(move |e| is_file || is_parquet(e))
+            .filter_map(Result::ok)
+            .map(DirEntry::into_path)
+            .filter(|p| p.is_file())
     }
 }
 
-pub struct ParquetRowFormatterIterator<'a> {
-    iter: ParquetRowIterator<'a>,
+impl From<&Path> for ParquetFile {
+    fn from(path: &Path) -> Self {
+        ParquetFile::new(path.to_path_buf())
+    }
+}
+
+impl From<(&Path, Option<Vec<String>>)> for ParquetFile {
+    fn from(tuple: (&Path, Option<Vec<String>>)) -> Self {
+        ParquetFile::from(tuple.0).with_fields(tuple.1)
+    }
+}
+
+struct Iter<T> {
+    values: Result<T, Vec<String>>,
     fields: Vec<(usize, String)>,
 }
 
-impl<'a> ParquetRowFormatterIterator<'a> {
-    pub fn new(iter: ParquetRowIterator<'a>, fields: Vec<(usize, String)>) -> Self {
-        Self { iter, fields }
+impl<T> Iter<T>
+where
+    T: Iterator<Item = Row>,
+{
+    fn new(values: T, fields: Vec<(usize, String)>) -> Self {
+        Self {
+            values: Ok(values),
+            fields,
+        }
     }
 
-    pub fn field_names(&self) -> Vec<String> {
-        self.fields.iter().map(|e| e.1.clone()).collect()
+    fn err(error: String) -> Self {
+        Self {
+            values: Err(vec![error]),
+            fields: vec![],
+        }
     }
 
     fn format(&self, row: &Row) -> Vec<String> {
@@ -234,20 +206,26 @@ impl<'a> ParquetRowFormatterIterator<'a> {
     }
 }
 
-impl<'a> Iterator for ParquetRowFormatterIterator<'a> {
-    type Item = Vec<String>;
+impl<T> Iterator for Iter<T>
+where
+    T: Iterator<Item = Row>,
+{
+    type Item = Result<Vec<String>, String>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|r| self.format(&r))
+        match self.values {
+            Ok(ref mut iter) => iter.next().map(|r| Ok(self.format(&r))),
+            Err(ref mut err) => err.pop().map(Result::Err),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use parquet::record::RowAccessor;
     use std::fs::File;
     use utils::test_utils;
+    use utils::test_utils::time_to_str;
 
     #[test]
     fn test_path_to_reader() {
@@ -282,33 +260,7 @@ mod tests {
     }
 
     #[test]
-    fn test_reader_to_row_iter() {
-        let dir = test_utils::temp_dir();
-        let path = dir.path().join("file.parquet");
-
-        File::create(path.clone()).unwrap();
-
-        test_utils::write_simple_message_parquet(
-            &path,
-            &test_utils::SimpleMessage {
-                field_int32: 1,
-                field_int64: 2,
-                field_float: 3.3,
-                field_double: 4.4,
-                field_string: "5".to_string(),
-                field_boolean: true,
-                field_timestamp: vec![0, 0, 2_454_923],
-            },
-        );
-
-        let reader = create_parquet_reader(&path).unwrap();
-        let result = create_row_iter(&reader);
-
-        assert_eq!(result.is_ok(), true);
-    }
-
-    #[test]
-    fn test_walk_parquet() {
+    fn test_parquet_files() {
         let dir = test_utils::temp_dir();
         let path1 = dir.path().join("part-1.snappy.parquet");
         let path2 = dir.path().join("part-2.snappy.parquet");
@@ -318,10 +270,15 @@ mod tests {
         File::create(path2.clone()).unwrap();
         File::create(path3.clone()).unwrap();
 
-        let mut dir_vec = walk_parquet(dir.path());
-        let file1_vec = walk_parquet(&path1);
-        let file2_vec = walk_parquet(&path2);
-        let file3_vec = walk_parquet(&path3);
+        let parquet_dir = ParquetFile::from(dir.path());
+        let parquet_file1 = ParquetFile::from(path1.as_path());
+        let parquet_file2 = ParquetFile::from(path2.as_path());
+        let parquet_file3 = ParquetFile::from(path3.as_path());
+
+        let mut dir_vec = parquet_dir.files().collect::<Vec<_>>();
+        let file1_vec = parquet_file1.files().collect::<Vec<_>>();
+        let file2_vec = parquet_file2.files().collect::<Vec<_>>();
+        let file3_vec = parquet_file3.files().collect::<Vec<_>>();
 
         dir_vec.sort();
 
@@ -336,62 +293,6 @@ mod tests {
 
         assert_eq!(file3_vec.len(), 1);
         assert_eq!(file3_vec, vec![path3.clone()]);
-    }
-
-    #[test]
-    fn test_get_parquet_readers() {
-        let dir = test_utils::temp_dir();
-        let path1 = dir.path().join("1.snappy.parquet");
-        let path2 = dir.path().join("2.snappy.parquet");
-        let path3 = dir.path().join("_SUCCESS");
-        let root = dir.path();
-
-        File::create(path1.clone()).unwrap();
-        File::create(path2.clone()).unwrap();
-        File::create(path3.clone()).unwrap();
-
-        {
-            test_utils::write_simple_message_parquet(
-                &path1,
-                &test_utils::SimpleMessage {
-                    field_int32: 1,
-                    field_int64: 2,
-                    field_float: 3.3,
-                    field_double: 4.4,
-                    field_string: "5".to_string(),
-                    field_boolean: true,
-                    field_timestamp: vec![0, 0, 2_454_923],
-                },
-            );
-
-            test_utils::write_simple_message_parquet(
-                &path2,
-                &test_utils::SimpleMessage {
-                    field_int32: 11,
-                    field_int64: 22,
-                    field_float: 33.3,
-                    field_double: 44.4,
-                    field_string: "55".to_string(),
-                    field_boolean: false,
-                    field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-                },
-            );
-        }
-
-        let result_ok = get_parquet_readers(&root);
-        let result_err = get_parquet_readers(&path3);
-
-        assert_eq!(result_ok.is_ok(), true);
-        assert_eq!(result_ok.unwrap().len(), 2);
-
-        assert_eq!(result_err.is_err(), true);
-        assert_eq!(
-            result_err.err().unwrap(),
-            format!(
-                "{} >>> Parquet error: Invalid Parquet file. Size is smaller than footer",
-                path3.to_string_lossy()
-            )
-        );
     }
 
     #[test]
@@ -414,10 +315,10 @@ mod tests {
         test_utils::write_simple_messages_parquet(&path, &[&msg]);
 
         let reader = create_parquet_reader(&path).unwrap();
-        let result1 = get_row_fields(&reader, None);
+        let result1 = get_row_fields(&reader, &None);
         let result2 = get_row_fields(
             &reader,
-            Some(vec![
+            &Some(vec![
                 String::from("field_timestamp"),
                 String::from("FIELD_INT64"),
                 String::from("field_int32"),
@@ -450,18 +351,259 @@ mod tests {
     }
 
     #[test]
-    fn test_parquet_file_of_invalid_file() {
+    fn test_parquet_file_num_files() {
+        let dir = test_utils::temp_dir();
+        let path1 = dir.path().join("1.snappy.parquet");
+        let path2 = dir.path().join("2.snappy.parquet");
+
+        File::create(path1.clone()).unwrap();
+        File::create(path2.clone()).unwrap();
+
+        let msg1 = test_utils::SimpleMessage {
+            field_int32: 1,
+            field_int64: 2,
+            field_float: 3.3,
+            field_double: 4.4,
+            field_string: "5".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![0, 0, 2_454_923],
+        };
+
+        let msg2 = test_utils::SimpleMessage {
+            field_int32: 11,
+            field_int64: 22,
+            field_float: 33.3,
+            field_double: 44.4,
+            field_string: "55".to_string(),
+            field_boolean: false,
+            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+        };
+
+        test_utils::write_simple_message_parquet(&path1, &msg1);
+        test_utils::write_simple_message_parquet(&path2, &msg2);
+
+        let parquet_dir = ParquetFile::from(dir.path());
+        let parquet_path1 = ParquetFile::from(path1.as_path());
+        let parquet_path2 = ParquetFile::from(path2.as_path());
+
+        assert_eq!(2, parquet_dir.files().count());
+        assert_eq!(1, parquet_path1.files().count());
+        assert_eq!(1, parquet_path2.files().count());
+    }
+
+    #[test]
+    fn test_parquet_file_num_rows() {
+        let dir = test_utils::temp_dir();
+        let path1 = dir.path().join("1.snappy.parquet");
+        let path2 = dir.path().join("2.snappy.parquet");
+        let path3 = dir.path().join("NOT_A_PARQUET");
+
+        File::create(path1.clone()).unwrap();
+        File::create(path2.clone()).unwrap();
+        File::create(path3.clone()).unwrap();
+
+        let msg1 = test_utils::SimpleMessage {
+            field_int32: 1,
+            field_int64: 2,
+            field_float: 3.3,
+            field_double: 4.4,
+            field_string: "5".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![0, 0, 2_454_923],
+        };
+
+        let msg2 = test_utils::SimpleMessage {
+            field_int32: 11,
+            field_int64: 22,
+            field_float: 33.3,
+            field_double: 44.4,
+            field_string: "55".to_string(),
+            field_boolean: false,
+            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+        };
+
+        let msg3 = test_utils::SimpleMessage {
+            field_int32: 111,
+            field_int64: 222,
+            field_float: 332.3,
+            field_double: 444.4,
+            field_string: "555".to_string(),
+            field_boolean: false,
+            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+        };
+
+        test_utils::write_simple_messages_parquet(&path1, &[&msg1, &msg2]);
+        test_utils::write_simple_messages_parquet(&path2, &[&msg3]);
+
+        let parquet_dir = ParquetFile::from(dir.path());
+        let parquet_path1 = ParquetFile::from(path1.as_path());
+        let parquet_path2 = ParquetFile::from(path2.as_path());
+        let parquet_path3 = ParquetFile::from(path3.as_path());
+
+        assert_eq!(3, parquet_dir.num_rows());
+        assert_eq!(2, parquet_path1.num_rows());
+        assert_eq!(1, parquet_path2.num_rows());
+        assert_eq!(0, parquet_path3.num_rows());
+    }
+
+    #[test]
+    fn test_parquet_file_metadata() {
+        let dir = test_utils::temp_dir();
+        let empty = test_utils::temp_dir();
+        let path1 = dir.path().join("ok.parquet");
+        let path2 = dir.path().join("bad.parquet");
+
+        File::create(path1.clone()).unwrap();
+        File::create(path2.clone()).unwrap();
+
+        let msg1 = test_utils::SimpleMessage {
+            field_int32: 1,
+            field_int64: 2,
+            field_float: 3.3,
+            field_double: 4.4,
+            field_string: "5".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![0, 0, 2_454_923],
+        };
+
+        test_utils::write_simple_message_parquet(&path1, &msg1);
+
+        let parquet_ok = ParquetFile::from(path1.as_path());
+        let parquet_err = ParquetFile::from(path2.as_path());
+        let parquet_empty = ParquetFile::from(empty.path());
+        let result_empty = parquet_empty.metadata();
+        let result_err = parquet_err.metadata();
+        let result_ok = parquet_ok.metadata();
+
+        assert_eq!(result_ok.is_ok(), true);
+        assert_eq!(result_err.is_err(), true);
+        assert_eq!(result_empty.is_err(), true);
+
+        assert_eq!(
+            result_err.err().unwrap(),
+            format!(
+                "{} >>> Parquet error: Invalid Parquet file. Size is smaller than footer",
+                path2.to_string_lossy()
+            )
+        );
+
+        assert_eq!(result_empty.err().unwrap(), "Failed to read parquet");
+    }
+
+    #[test]
+    fn test_reader_to_row_iter() -> Result<(), String> {
+        let dir = test_utils::temp_dir();
+        let path = dir.path().join("file.parquet");
+
+        File::create(path.clone()).unwrap();
+
+        let msg1 = test_utils::SimpleMessage {
+            field_int32: 1,
+            field_int64: 2,
+            field_float: 3.3,
+            field_double: 4.4,
+            field_string: "5".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![0, 0, 2_454_923],
+        };
+
+        let msg2 = test_utils::SimpleMessage {
+            field_int32: 11,
+            field_int64: 22,
+            field_float: 33.3,
+            field_double: 44.4,
+            field_string: "55".to_string(),
+            field_boolean: false,
+            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+        };
+
+        test_utils::write_simple_messages_parquet(path.as_path(), &[&msg1, &msg2]);
+
+        let fields = vec![String::from("field_int32"), String::from("field_int64")];
+        let reader = ParquetFile::from(dir.path()).with_fields(Some(fields));
+        let result = reader.iter().filter_map(Result::ok).collect::<Vec<_>>();
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], vec!["1", "2"]);
+        assert_eq!(result[1], vec!["11", "22"]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_reader_to_row_iter_fmt() {
+        let dir = test_utils::temp_dir();
+        let path = dir.path().join("file.parquet");
+
+        File::create(path.clone()).unwrap();
+
+        let msg1 = test_utils::SimpleMessage {
+            field_int32: 1,
+            field_int64: 2,
+            field_float: 3.3,
+            field_double: 4.4,
+            field_string: "5".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![0, 0, 2_454_923],
+        };
+
+        let msg2 = test_utils::SimpleMessage {
+            field_int32: 11,
+            field_int64: 22,
+            field_float: 33.3,
+            field_double: 44.4,
+            field_string: "55".to_string(),
+            field_boolean: false,
+            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+        };
+
+        test_utils::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+
+        let reader = ParquetFile::from(dir.path());
+        let result = reader.iter().filter_map(Result::ok).collect::<Vec<_>>();
+
+        assert_eq!(result.len(), 2);
+
+        assert_eq!(
+            result[0],
+            vec![
+                "1",
+                "2",
+                "3.3",
+                "4.4",
+                "\"5\"",
+                "true",
+                &time_to_str(1_238_544_000_000)
+            ]
+        );
+        assert_eq!(
+            result[1],
+            vec![
+                "11",
+                "22",
+                "33.3",
+                "44.4",
+                "\"55\"",
+                "false",
+                &time_to_str(1_238_544_060_000)
+            ]
+        );
+    }
+
+    #[test]
+    fn test_reader_to_row_iter_err() {
         let dir = test_utils::temp_dir();
         let path = dir.path().join("NOT_A_PARQUET");
 
         File::create(path.clone()).unwrap();
 
-        let result = ParquetFile::of(&path);
+        let parquet = ParquetFile::from(path.as_path());
+        let result = parquet.iter().collect::<Vec<_>>();
 
-        assert_eq!(result.is_err(), true);
+        assert_eq!(result.len(), 1);
         assert_eq!(
-            result.err(),
-            Some(format!(
+            result[0],
+            Err(format!(
                 "{} >>> Parquet error: Invalid Parquet file. Size is smaller than footer",
                 path.to_string_lossy()
             ))
@@ -469,13 +611,13 @@ mod tests {
     }
 
     #[test]
-    fn test_parquet_file_to_row_iter() {
+    fn test_reader_field_names() {
         let dir = test_utils::temp_dir();
-        let path = dir.path().join("1.snappy.parquet");
+        let path = dir.path().join("file.parquet");
 
         File::create(path.clone()).unwrap();
 
-        let msg1 = test_utils::SimpleMessage {
+        let msg = test_utils::SimpleMessage {
             field_int32: 1,
             field_int64: 2,
             field_float: 3.3,
@@ -485,66 +627,59 @@ mod tests {
             field_timestamp: vec![0, 0, 2_454_923],
         };
 
-        let msg2 = test_utils::SimpleMessage {
-            field_int32: 11,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "55".to_string(),
-            field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
+        test_utils::write_simple_messages_parquet(&path, &[&msg]);
 
-        test_utils::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+        let fields = vec![String::from("field_string"), String::from("FIELD_INT32")];
 
-        let parquet = ParquetFile::of(&path).unwrap();
-        let row_iter = parquet.to_row_iter().unwrap();
-        let values = row_iter.collect::<Vec<_>>();
+        let result_fields = ParquetFile::from(dir.path())
+            .with_fields(Some(fields))
+            .field_names();
 
-        assert_eq!(values.len(), 2);
-        assert_eq!(values[0].get_int(0), Ok(msg1.field_int32));
-        assert_eq!(values[1].get_int(0), Ok(msg2.field_int32));
+        let result_all = ParquetFile::from(dir.path()).field_names();
+
+        assert_eq!(
+            result_fields,
+            Ok(vec![
+                String::from("field_string"),
+                String::from("field_int32")
+            ])
+        );
+
+        assert_eq!(
+            result_all,
+            Ok(vec![
+                String::from("field_int32"),
+                String::from("field_int64"),
+                String::from("field_float"),
+                String::from("field_double"),
+                String::from("field_string"),
+                String::from("field_boolean"),
+                String::from("field_timestamp"),
+            ])
+        );
     }
 
     #[test]
-    fn test_parquet_file_to_row_fmt_iter() {
+    fn test_reader_field_names_err() {
         let dir = test_utils::temp_dir();
-        let path = dir.path().join("1.snappy.parquet");
+        let empty = test_utils::temp_dir();
+        let path = dir.path().join("NOT_A_PARQUET");
 
         File::create(path.clone()).unwrap();
 
-        let msg1 = test_utils::SimpleMessage {
-            field_int32: 1,
-            field_int64: 2,
-            field_float: 3.3,
-            field_double: 4.4,
-            field_string: "5".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
-        };
+        let parquet_empty = ParquetFile::from(empty.path());
+        let parquet_bad = ParquetFile::from(path.as_path());
+        let result_empty = parquet_empty.field_names();
+        let result_bad = parquet_bad.field_names();
 
-        let msg2 = test_utils::SimpleMessage {
-            field_int32: 11,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "55".to_string(),
-            field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
+        assert_eq!(
+            result_bad,
+            Err(format!(
+                "{} >>> Parquet error: Invalid Parquet file. Size is smaller than footer",
+                path.to_string_lossy()
+            ))
+        );
 
-        test_utils::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
-
-        let fields = vec![String::from("field_int32"), String::from("field_int64")];
-        let parquet = ParquetFile::of(&path).unwrap();
-        let row_iter = parquet.to_row_fmt_iter(Some(fields.clone())).unwrap();
-        let field_names = row_iter.field_names();
-        let values = row_iter.collect::<Vec<_>>();
-
-        assert_eq!(values.len(), 2);
-
-        assert_eq!(values[0], vec!["1", "2"]);
-        assert_eq!(values[1], vec!["11", "22"]);
-        assert_eq!(field_names, fields.clone());
+        assert_eq!(result_empty, Err(String::from("Failed to read parquet")));
     }
 }

@@ -72,7 +72,7 @@ pub struct TableOutputWriter<T> {
 
 impl<T> TableOutputWriter<T>
 where
-    T: Iterator<Item = Vec<String>>,
+    T: Iterator<Item = Result<Vec<String>, String>>,
 {
     pub fn new(headers: Vec<String>, values: T) -> Self {
         Self {
@@ -92,7 +92,7 @@ where
             .map_err(|e| format!("Failed write headers : {}", e))?;
 
         for (i, vec) in values.enumerate() {
-            tw.write_all(&format_row(i, self.batch_size, &vec, &mut width))
+            tw.write_all(&format_row(i, self.batch_size, &vec?, &mut width))
                 .map_err(|e| format!("Failed write row : {}", e))?;
 
             if i > 0 && i % self.batch_size == 0 {
@@ -163,7 +163,7 @@ mod tests {
             vec![String::from("r2 - 1"), String::from("r2 - 2")],
         ];
 
-        let iter = values.into_iter();
+        let iter = values.into_iter().map(Result::Ok);
         let mut writer = TableOutputWriter::new(headers, iter);
 
         writer.write(&mut buff).unwrap();
@@ -180,7 +180,7 @@ mod tests {
         let headers: Vec<String> = vec![String::from("c")];
         let values = vec![vec![String::from("1")], vec![String::from("2")]];
 
-        let iter = values.into_iter();
+        let iter = values.into_iter().map(Result::Ok);
         let mut writer = TableOutputWriter::new(headers, iter);
 
         writer.write(&mut buff).unwrap();
@@ -202,7 +202,7 @@ mod tests {
             .map(|n| vec![n.to_string()])
             .collect::<Vec<_>>();
 
-        let iter = values.into_iter();
+        let iter = values.into_iter().map(Result::Ok);
         let mut writer = TableOutputWriter::new(headers, iter);
 
         writer.write(&mut buff).unwrap();
