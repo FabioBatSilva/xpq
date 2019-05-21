@@ -1,6 +1,6 @@
 [package]
 name = "xpq"
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 authors = ["Fabio B. Silva <fabio.bat.silva@gmail.com>"]
 description = "Simple Parquet command line toolkit."
 documentation = "https://github.com/FabioBatSilva/xpq"
