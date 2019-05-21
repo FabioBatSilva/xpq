@@ -1,3 +1,6 @@
+use api::Error;
+use api::Result;
+use either::Either;
 use parquet::file::metadata::ParquetMetaDataPtr;
 use parquet::file::reader::FileReader;
 use parquet::file::reader::SerializedFileReader;
@@ -13,9 +16,9 @@ use walkdir::{DirEntry, WalkDir};
 pub type ParquetFileReader = SerializedFileReader<File>;
 
 #[inline]
-fn create_parquet_reader(path: &Path) -> Result<ParquetFileReader, String> {
+fn create_parquet_reader(path: &Path) -> Result<ParquetFileReader> {
     SerializedFileReader::try_from(path)
-        .map_err(|e| format!("{} >>> {}", path.display(), e))
+        .map_err(|e| Error::Parquet(path.to_path_buf(), e))
 }
 
 #[inline]
@@ -99,7 +102,7 @@ impl ParquetFile {
             .sum()
     }
 
-    pub fn field_names(&self) -> Result<Vec<String>, String> {
+    pub fn field_names(&self) -> Result<Vec<String>> {
         self.files()
             .nth(0)
             .map(|p| create_parquet_reader(p.as_path()))
@@ -109,22 +112,22 @@ impl ParquetFile {
 
                 Ok(names)
             })
-            .unwrap_or_else(|| Err(String::from("Failed to read parquet")))
+            .unwrap_or_else(|| Err(Error::from(self.path.to_path_buf())))
     }
 
-    pub fn metadata(&self) -> Result<ParquetMetaDataPtr, String> {
+    pub fn metadata(&self) -> Result<ParquetMetaDataPtr> {
         self.files()
             .nth(0)
             .map(|p| create_parquet_reader(p.as_path()))
             .map(|r| Ok(r?.metadata()))
-            .unwrap_or_else(|| Err(String::from("Failed to read parquet")))
+            .unwrap_or_else(|| Err(Error::from(self.path.to_path_buf())))
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = Result<Vec<String>, String>> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = Result<Vec<String>>> + '_ {
         let field_names = self.fields.clone();
         let iter = self.files();
 
-        iter.map(move |p| -> Result<Iter<_>, String> {
+        iter.map(move |p| -> Result<Iter<_>> {
             let reader = create_parquet_reader(p.as_path())?;
             let fields = get_row_fields(&reader, &field_names);
             let row_iter: RowIter<'static> = reader.into_iter();
@@ -157,7 +160,7 @@ impl ParquetFile {
             .contents_first(true)
             .into_iter()
             .filter_entry(move |e| is_file || is_parquet(e))
-            .filter_map(Result::ok)
+            .filter_map(std::result::Result::ok)
             .map(DirEntry::into_path)
             .filter(|p| p.is_file())
     }
@@ -176,7 +179,7 @@ impl From<(&Path, Option<Vec<String>>)> for ParquetFile {
 }
 
 struct Iter<T> {
-    values: Result<T, Vec<String>>,
+    values: Either<T, Vec<Error>>,
     fields: Vec<(usize, String)>,
 }
 
@@ -186,14 +189,14 @@ where
 {
     fn new(values: T, fields: Vec<(usize, String)>) -> Self {
         Self {
-            values: Ok(values),
+            values: Either::Left(values),
             fields,
         }
     }
 
-    fn err(error: String) -> Self {
+    fn err(error: Error) -> Self {
         Self {
-            values: Err(vec![error]),
+            values: Either::Right(vec![error]),
             fields: vec![],
         }
     }
@@ -210,12 +213,12 @@ impl<T> Iterator for Iter<T>
 where
     T: Iterator<Item = Row>,
 {
-    type Item = Result<Vec<String>, String>;
+    type Item = Result<Vec<String>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.values {
-            Ok(ref mut iter) => iter.next().map(|r| Ok(self.format(&r))),
-            Err(ref mut err) => err.pop().map(Result::Err),
+            Either::Left(ref mut iter) => iter.next().map(|r| Ok(self.format(&r))),
+            Either::Right(ref mut err) => err.pop().map(std::result::Result::Err),
         }
     }
 }
@@ -480,18 +483,21 @@ mod tests {
         assert_eq!(result_empty.is_err(), true);
 
         assert_eq!(
-            result_err.err().unwrap(),
+            format!("{}", result_err.err().unwrap()),
             format!(
                 "{} >>> Parquet error: Invalid Parquet file. Size is smaller than footer",
                 path2.to_string_lossy()
             )
         );
 
-        assert_eq!(result_empty.err().unwrap(), "Failed to read parquet");
+        assert_eq!(
+            result_empty.err().unwrap(),
+            Error::InvalidParquet(empty.path().to_path_buf())
+        );
     }
 
     #[test]
-    fn test_reader_to_row_iter() -> Result<(), String> {
+    fn test_reader_to_row_iter() -> Result<()> {
         let dir = test_utils::temp_dir();
         let path = dir.path().join("file.parquet");
 
@@ -603,9 +609,11 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(
             result[0],
-            Err(format!(
-                "{} >>> Parquet error: Invalid Parquet file. Size is smaller than footer",
-                path.to_string_lossy()
+            Err(Error::Parquet(
+                path.to_path_buf(),
+                parquet::errors::ParquetError::General(String::from(
+                    "Invalid Parquet file. Size is smaller than footer"
+                ))
             ))
         );
     }
@@ -673,13 +681,16 @@ mod tests {
         let result_bad = parquet_bad.field_names();
 
         assert_eq!(
-            result_bad,
-            Err(format!(
+            format!("{}", result_bad.err().unwrap()),
+            format!(
                 "{} >>> Parquet error: Invalid Parquet file. Size is smaller than footer",
                 path.to_string_lossy()
-            ))
+            )
         );
 
-        assert_eq!(result_empty, Err(String::from("Failed to read parquet")));
+        assert_eq!(
+            result_empty.err().unwrap(),
+            Error::InvalidParquet(empty.path().to_path_buf())
+        );
     }
 }

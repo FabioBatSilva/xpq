@@ -1,6 +1,7 @@
 use crate::command::args;
 use crate::output::TableOutputWriter;
 use crate::reader::ParquetFile;
+use api::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::io::Write;
 
@@ -40,7 +41,7 @@ pub fn def() -> App<'static, 'static> {
         )
 }
 
-pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
+pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
     let columns = args::string_values(matches, "columns")?;
     let limit = args::usize_value(matches, "limit")?;
     let path = args::path_value(matches, "path")?;

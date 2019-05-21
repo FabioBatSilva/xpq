@@ -1,4 +1,5 @@
 use crate::reader::ParquetFile;
+use api::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use command::args;
 use parquet::schema::printer::print_schema;
@@ -24,7 +25,7 @@ pub fn def() -> App<'static, 'static> {
         )
 }
 
-pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
+pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
     let path = args::path_value(matches, "path")?;
     let parquet = ParquetFile::from(path);
     let metadata = parquet.metadata()?;

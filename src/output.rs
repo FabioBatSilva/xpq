@@ -1,3 +1,4 @@
+use api::Result;
 use std::cmp;
 use std::io::Write;
 use std::str;
@@ -72,7 +73,7 @@ pub struct TableOutputWriter<T> {
 
 impl<T> TableOutputWriter<T>
 where
-    T: Iterator<Item = Result<Vec<String>, String>>,
+    T: Iterator<Item = Result<Vec<String>>>,
 {
     pub fn new(headers: Vec<String>, values: T) -> Self {
         Self {
@@ -83,26 +84,24 @@ where
         }
     }
 
-    pub fn write<W: Write>(&mut self, out: &mut W) -> Result<(), String> {
+    pub fn write<W: Write>(&mut self, out: &mut W) -> Result<()> {
         let values = &mut self.values;
         let mut width = vec![self.minwidth; self.headers.len()];
         let mut tw = TabWriter::new(out).minwidth(self.minwidth);
 
-        tw.write_all(&format_row(0, self.batch_size, &self.headers, &mut width))
-            .map_err(|e| format!("Failed write headers : {}", e))?;
+        tw.write_all(&format_row(0, self.batch_size, &self.headers, &mut width))?;
 
         for (i, vec) in values.enumerate() {
-            tw.write_all(&format_row(i, self.batch_size, &vec?, &mut width))
-                .map_err(|e| format!("Failed write row : {}", e))?;
+            tw.write_all(&format_row(i, self.batch_size, &vec?, &mut width))?;
 
             if i > 0 && i % self.batch_size == 0 {
-                tw.flush()
-                    .map_err(|e| format!("Failed flush table : {}", e))?;
+                tw.flush()?;
             }
         }
 
-        tw.flush()
-            .map_err(|e| format!("Failed flush table : {}", e))
+        tw.flush()?;
+
+        Ok(())
     }
 }
 
@@ -159,11 +158,11 @@ mod tests {
         let mut buff = Cursor::new(Vec::new());
         let headers: Vec<String> = vec![String::from("c1"), String::from("c2")];
         let values = vec![
-            vec![String::from("r1 - 1"), String::from("r1 - 2")],
-            vec![String::from("r2 - 1"), String::from("r2 - 2")],
+            Ok(vec![String::from("r1 - 1"), String::from("r1 - 2")]),
+            Ok(vec![String::from("r2 - 1"), String::from("r2 - 2")]),
         ];
 
-        let iter = values.into_iter().map(Result::Ok);
+        let iter = values.into_iter();
         let mut writer = TableOutputWriter::new(headers, iter);
 
         writer.write(&mut buff).unwrap();
@@ -178,9 +177,9 @@ mod tests {
     fn test_table_output_writer_write_minwidth() {
         let mut buff = Cursor::new(Vec::new());
         let headers: Vec<String> = vec![String::from("c")];
-        let values = vec![vec![String::from("1")], vec![String::from("2")]];
+        let values = vec![Ok(vec![String::from("1")]), Ok(vec![String::from("2")])];
 
-        let iter = values.into_iter().map(Result::Ok);
+        let iter = values.into_iter();
         let mut writer = TableOutputWriter::new(headers, iter);
 
         writer.write(&mut buff).unwrap();
@@ -199,10 +198,10 @@ mod tests {
         let val_vec: Vec<String> = (0..1000).map(|n| format!("{}", n)).collect();
         let values = val_vec
             .iter()
-            .map(|n| vec![n.to_string()])
+            .map(|n| Ok(vec![n.to_string()]))
             .collect::<Vec<_>>();
 
-        let iter = values.into_iter().map(Result::Ok);
+        let iter = values.into_iter();
         let mut writer = TableOutputWriter::new(headers, iter);
 
         writer.write(&mut buff).unwrap();
