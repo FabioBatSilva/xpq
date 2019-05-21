@@ -1,6 +1,7 @@
 use crate::command::args;
 use crate::output::TableOutputWriter;
 use crate::reader::ParquetFile;
+use api::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -52,7 +53,7 @@ fn sample_indexes(sample: usize, size: usize) -> HashSet<usize> {
     vec.iter().take(sample).cloned().collect()
 }
 
-pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
+pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
     let columns = args::string_values(matches, "columns")?;
     let sample = args::usize_value(matches, "sample")?;
     let path = args::path_value(matches, "path")?;

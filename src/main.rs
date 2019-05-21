@@ -1,5 +1,7 @@
 extern crate clap;
+extern crate either;
 extern crate parquet;
+extern crate quick_error;
 extern crate rand;
 extern crate tabwriter;
 extern crate unicode_width;
@@ -8,12 +10,13 @@ extern crate walkdir;
 use clap::{App, AppSettings, ArgMatches};
 use std::process;
 
+mod api;
 mod command;
 mod output;
 mod reader;
 mod utils;
 
-fn run(matches: ArgMatches) -> Result<(), String> {
+fn run(matches: ArgMatches) -> api::Result<()> {
     let out = &mut std::io::stdout();
 
     match matches.subcommand() {

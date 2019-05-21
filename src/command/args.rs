@@ -1,22 +1,17 @@
+use crate::api::{Error, Result};
 use clap::ArgMatches;
 use std::path::Path;
 use std::str;
 
-pub fn path_value<'a>(
-    matches: &'a ArgMatches<'a>,
-    name: &str,
-) -> Result<&'a Path, String> {
+pub fn path_value<'a>(matches: &'a ArgMatches<'a>, name: &str) -> Result<&'a Path> {
     matches
         .value_of(name)
         .map(|p| Path::new(p))
         .filter(|p| p.exists())
-        .ok_or_else(|| format!("Invalid argument : {}", name))
+        .ok_or_else(|| Error::InvalidArgument(name.to_string()))
 }
 
-pub fn string_values(
-    matches: &ArgMatches,
-    name: &str,
-) -> Result<Option<Vec<String>>, String> {
+pub fn string_values(matches: &ArgMatches, name: &str) -> Result<Option<Vec<String>>> {
     matches
         .values_of(name)
         .map(|v| {
@@ -26,26 +21,26 @@ pub fn string_values(
         })
         .or_else(|| Some(vec![]))
         .map(|vec| Some(vec).filter(|v| !v.is_empty()))
-        .ok_or_else(|| format!("Invalid argument : {}", name))
+        .ok_or_else(|| Error::InvalidArgument(name.to_string()))
 }
 
-pub fn usize_value(matches: &ArgMatches, name: &str) -> Result<usize, String> {
+pub fn usize_value(matches: &ArgMatches, name: &str) -> Result<usize> {
     matches
         .value_of(name)
         .map(str::parse)
-        .filter(Result::is_ok)
-        .map(Result::unwrap)
-        .ok_or_else(|| format!("Invalid argument : {}", name))
+        .filter(std::result::Result::is_ok)
+        .map(std::result::Result::unwrap)
+        .ok_or_else(|| Error::InvalidArgument(name.to_string()))
 }
 
-pub fn validate_number(value: String) -> Result<(), String> {
+pub fn validate_number(value: String) -> std::result::Result<(), String> {
     value
         .parse::<usize>()
         .map(|_| ())
         .map_err(|err| err.to_string())
 }
 
-pub fn validate_path(value: String) -> Result<(), String> {
+pub fn validate_path(value: String) -> std::result::Result<(), String> {
     Some(Path::new(&value))
         .filter(|p| p.exists())
         .map(|_| ())
@@ -91,7 +86,7 @@ mod tests {
 
         assert_eq!(Ok(123), usize_value(&valid, name));
         assert_eq!(
-            Err("Invalid argument : limit".to_string()),
+            Err(Error::InvalidArgument("limit".to_string())),
             usize_value(&invalid, name)
         );
     }
@@ -152,7 +147,7 @@ mod tests {
 
         assert_eq!(Ok(Path::new(path)), path_value(&valid, name));
         assert_eq!(
-            Err("Invalid argument : path".to_string()),
+            Err(Error::InvalidArgument("path".to_string())),
             path_value(&invalid, name)
         );
     }

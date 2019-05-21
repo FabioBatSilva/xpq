@@ -1,6 +1,7 @@
 use crate::command::args;
 use crate::output::TableOutputWriter;
 use crate::reader::ParquetFile;
+use api::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::io::Write;
 
@@ -24,7 +25,7 @@ pub fn def() -> App<'static, 'static> {
         )
 }
 
-pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<(), String> {
+pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
     let path = args::path_value(matches, "path")?;
     let parquet = ParquetFile::from(path);
     let count = parquet.num_rows();
