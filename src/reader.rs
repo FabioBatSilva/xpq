@@ -226,13 +226,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use api;
+    use api::tests::time_to_str;
     use std::fs::File;
-    use utils::test_utils;
-    use utils::test_utils::time_to_str;
 
     #[test]
     fn test_path_to_reader() {
-        let dir = test_utils::temp_dir();
+        let dir = api::tests::temp_dir();
         let path1 = dir.path().join("1.snappy.parquet");
         let path2 = dir.path().join("2.snappy.parquet");
         let path3 = dir.path().join("3.snappy.parquet");
@@ -240,9 +240,9 @@ mod tests {
         File::create(path1.clone()).unwrap();
         File::create(path2.clone()).unwrap();
 
-        test_utils::write_simple_message_parquet(
+        api::tests::write_simple_message_parquet(
             &path1,
-            &test_utils::SimpleMessage {
+            &api::tests::SimpleMessage {
                 field_int32: 1,
                 field_int64: 2,
                 field_float: 3.3,
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_parquet_files() {
-        let dir = test_utils::temp_dir();
+        let dir = api::tests::temp_dir();
         let path1 = dir.path().join("part-1.snappy.parquet");
         let path2 = dir.path().join("part-2.snappy.parquet");
         let path3 = dir.path().join("_SUCCESS");
@@ -300,12 +300,12 @@ mod tests {
 
     #[test]
     fn test_get_row_fields() {
-        let dir = test_utils::temp_dir();
+        let dir = api::tests::temp_dir();
         let path = dir.path().join("1.snappy.parquet");
 
         File::create(path.clone()).unwrap();
 
-        let msg = test_utils::SimpleMessage {
+        let msg = api::tests::SimpleMessage {
             field_int32: 1,
             field_int64: 2,
             field_float: 3.3,
@@ -315,7 +315,7 @@ mod tests {
             field_timestamp: vec![0, 0, 2_454_923],
         };
 
-        test_utils::write_simple_messages_parquet(&path, &[&msg]);
+        api::tests::write_simple_messages_parquet(&path, &[&msg]);
 
         let reader = create_parquet_reader(&path).unwrap();
         let result1 = get_row_fields(&reader, &None);
@@ -355,14 +355,14 @@ mod tests {
 
     #[test]
     fn test_parquet_file_num_files() {
-        let dir = test_utils::temp_dir();
+        let dir = api::tests::temp_dir();
         let path1 = dir.path().join("1.snappy.parquet");
         let path2 = dir.path().join("2.snappy.parquet");
 
         File::create(path1.clone()).unwrap();
         File::create(path2.clone()).unwrap();
 
-        let msg1 = test_utils::SimpleMessage {
+        let msg1 = api::tests::SimpleMessage {
             field_int32: 1,
             field_int64: 2,
             field_float: 3.3,
@@ -372,7 +372,7 @@ mod tests {
             field_timestamp: vec![0, 0, 2_454_923],
         };
 
-        let msg2 = test_utils::SimpleMessage {
+        let msg2 = api::tests::SimpleMessage {
             field_int32: 11,
             field_int64: 22,
             field_float: 33.3,
@@ -382,8 +382,8 @@ mod tests {
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
 
-        test_utils::write_simple_message_parquet(&path1, &msg1);
-        test_utils::write_simple_message_parquet(&path2, &msg2);
+        api::tests::write_simple_message_parquet(&path1, &msg1);
+        api::tests::write_simple_message_parquet(&path2, &msg2);
 
         let parquet_dir = ParquetFile::from(dir.path());
         let parquet_path1 = ParquetFile::from(path1.as_path());
@@ -396,7 +396,7 @@ mod tests {
 
     #[test]
     fn test_parquet_file_num_rows() {
-        let dir = test_utils::temp_dir();
+        let dir = api::tests::temp_dir();
         let path1 = dir.path().join("1.snappy.parquet");
         let path2 = dir.path().join("2.snappy.parquet");
         let path3 = dir.path().join("NOT_A_PARQUET");
@@ -405,7 +405,7 @@ mod tests {
         File::create(path2.clone()).unwrap();
         File::create(path3.clone()).unwrap();
 
-        let msg1 = test_utils::SimpleMessage {
+        let msg1 = api::tests::SimpleMessage {
             field_int32: 1,
             field_int64: 2,
             field_float: 3.3,
@@ -415,7 +415,7 @@ mod tests {
             field_timestamp: vec![0, 0, 2_454_923],
         };
 
-        let msg2 = test_utils::SimpleMessage {
+        let msg2 = api::tests::SimpleMessage {
             field_int32: 11,
             field_int64: 22,
             field_float: 33.3,
@@ -425,7 +425,7 @@ mod tests {
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
 
-        let msg3 = test_utils::SimpleMessage {
+        let msg3 = api::tests::SimpleMessage {
             field_int32: 111,
             field_int64: 222,
             field_float: 332.3,
@@ -435,8 +435,8 @@ mod tests {
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
 
-        test_utils::write_simple_messages_parquet(&path1, &[&msg1, &msg2]);
-        test_utils::write_simple_messages_parquet(&path2, &[&msg3]);
+        api::tests::write_simple_messages_parquet(&path1, &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&path2, &[&msg3]);
 
         let parquet_dir = ParquetFile::from(dir.path());
         let parquet_path1 = ParquetFile::from(path1.as_path());
@@ -451,15 +451,15 @@ mod tests {
 
     #[test]
     fn test_parquet_file_metadata() {
-        let dir = test_utils::temp_dir();
-        let empty = test_utils::temp_dir();
+        let dir = api::tests::temp_dir();
+        let empty = api::tests::temp_dir();
         let path1 = dir.path().join("ok.parquet");
         let path2 = dir.path().join("bad.parquet");
 
         File::create(path1.clone()).unwrap();
         File::create(path2.clone()).unwrap();
 
-        let msg1 = test_utils::SimpleMessage {
+        let msg1 = api::tests::SimpleMessage {
             field_int32: 1,
             field_int64: 2,
             field_float: 3.3,
@@ -469,7 +469,7 @@ mod tests {
             field_timestamp: vec![0, 0, 2_454_923],
         };
 
-        test_utils::write_simple_message_parquet(&path1, &msg1);
+        api::tests::write_simple_message_parquet(&path1, &msg1);
 
         let parquet_ok = ParquetFile::from(path1.as_path());
         let parquet_err = ParquetFile::from(path2.as_path());
@@ -498,12 +498,12 @@ mod tests {
 
     #[test]
     fn test_reader_to_row_iter() -> Result<()> {
-        let dir = test_utils::temp_dir();
+        let dir = api::tests::temp_dir();
         let path = dir.path().join("file.parquet");
 
         File::create(path.clone()).unwrap();
 
-        let msg1 = test_utils::SimpleMessage {
+        let msg1 = api::tests::SimpleMessage {
             field_int32: 1,
             field_int64: 2,
             field_float: 3.3,
@@ -513,7 +513,7 @@ mod tests {
             field_timestamp: vec![0, 0, 2_454_923],
         };
 
-        let msg2 = test_utils::SimpleMessage {
+        let msg2 = api::tests::SimpleMessage {
             field_int32: 11,
             field_int64: 22,
             field_float: 33.3,
@@ -523,7 +523,7 @@ mod tests {
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
 
-        test_utils::write_simple_messages_parquet(path.as_path(), &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(path.as_path(), &[&msg1, &msg2]);
 
         let fields = vec![String::from("field_int32"), String::from("field_int64")];
         let reader = ParquetFile::from(dir.path()).with_fields(Some(fields));
@@ -538,12 +538,12 @@ mod tests {
 
     #[test]
     fn test_reader_to_row_iter_fmt() {
-        let dir = test_utils::temp_dir();
+        let dir = api::tests::temp_dir();
         let path = dir.path().join("file.parquet");
 
         File::create(path.clone()).unwrap();
 
-        let msg1 = test_utils::SimpleMessage {
+        let msg1 = api::tests::SimpleMessage {
             field_int32: 1,
             field_int64: 2,
             field_float: 3.3,
@@ -553,7 +553,7 @@ mod tests {
             field_timestamp: vec![0, 0, 2_454_923],
         };
 
-        let msg2 = test_utils::SimpleMessage {
+        let msg2 = api::tests::SimpleMessage {
             field_int32: 11,
             field_int64: 22,
             field_float: 33.3,
@@ -563,7 +563,7 @@ mod tests {
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
 
-        test_utils::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
 
         let reader = ParquetFile::from(dir.path());
         let result = reader.iter().filter_map(Result::ok).collect::<Vec<_>>();
@@ -598,7 +598,7 @@ mod tests {
 
     #[test]
     fn test_reader_to_row_iter_err() {
-        let dir = test_utils::temp_dir();
+        let dir = api::tests::temp_dir();
         let path = dir.path().join("NOT_A_PARQUET");
 
         File::create(path.clone()).unwrap();
@@ -620,12 +620,12 @@ mod tests {
 
     #[test]
     fn test_reader_field_names() {
-        let dir = test_utils::temp_dir();
+        let dir = api::tests::temp_dir();
         let path = dir.path().join("file.parquet");
 
         File::create(path.clone()).unwrap();
 
-        let msg = test_utils::SimpleMessage {
+        let msg = api::tests::SimpleMessage {
             field_int32: 1,
             field_int64: 2,
             field_float: 3.3,
@@ -635,7 +635,7 @@ mod tests {
             field_timestamp: vec![0, 0, 2_454_923],
         };
 
-        test_utils::write_simple_messages_parquet(&path, &[&msg]);
+        api::tests::write_simple_messages_parquet(&path, &[&msg]);
 
         let fields = vec![String::from("field_string"), String::from("FIELD_INT32")];
 
@@ -669,8 +669,8 @@ mod tests {
 
     #[test]
     fn test_reader_field_names_err() {
-        let dir = test_utils::temp_dir();
-        let empty = test_utils::temp_dir();
+        let dir = api::tests::temp_dir();
+        let empty = api::tests::temp_dir();
         let path = dir.path().join("NOT_A_PARQUET");
 
         File::create(path.clone()).unwrap();

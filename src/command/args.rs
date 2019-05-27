@@ -50,12 +50,12 @@ pub fn validate_path(value: String) -> std::result::Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use api;
     use clap::{App, Arg};
-    use utils::test_utils;
 
     #[test]
     fn test_args_validate_path() {
-        let tmp = test_utils::temp_file("tmp", ".file");
+        let tmp = api::tests::temp_file("tmp", ".file");
         let valid = String::from(tmp.path().to_string_lossy());
         let invalid = String::from("NOT VALID");
 
@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn test_args_path_value() {
         let name = "path";
-        let tmp = test_utils::temp_file("tmp", ".file");
+        let tmp = api::tests::temp_file("tmp", ".file");
         let path = tmp.path().to_str().unwrap();
         let valid = create_matches(name, path);
         let invalid = create_matches(name, "NOT VALID");

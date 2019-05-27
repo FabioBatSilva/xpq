@@ -42,14 +42,14 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use api;
     use std::io::Cursor;
     use std::str;
-    use utils::test_utils;
 
     #[test]
     fn test_count_simple_messages() {
         let mut output = Cursor::new(Vec::new());
-        let parquet = test_utils::temp_file("msg", ".parquet");
+        let parquet = api::tests::temp_file("msg", ".parquet");
         let expected = "COUNT\n2\n";
 
         let subcomand = def();
@@ -57,7 +57,7 @@ mod tests {
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
         {
-            let msg1 = test_utils::SimpleMessage {
+            let msg1 = api::tests::SimpleMessage {
                 field_int32: 1,
                 field_int64: 2,
                 field_float: 3.3,
@@ -66,7 +66,7 @@ mod tests {
                 field_boolean: true,
                 field_timestamp: vec![0, 0, 2_454_923],
             };
-            let msg2 = test_utils::SimpleMessage {
+            let msg2 = api::tests::SimpleMessage {
                 field_int32: 11,
                 field_int64: 22,
                 field_float: 33.3,
@@ -76,7 +76,7 @@ mod tests {
                 field_timestamp: vec![4_165_425_152, 13, 2_454_923],
             };
 
-            test_utils::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
+            api::tests::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
 
             assert_eq!(true, run(&args, &mut output).is_ok());
         }
