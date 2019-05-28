@@ -40,14 +40,14 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use api;
     use std::io::Cursor;
     use std::str;
-    use utils::test_utils;
 
     #[test]
     fn test_schema_simple_message() {
         let mut output = Cursor::new(Vec::new());
-        let parquet = test_utils::temp_file("msg", "parquet");
+        let parquet = api::tests::temp_file("msg", "parquet");
         let expected = vec![
             "message simple_message {",
             "  OPTIONAL INT32 field_int32;",
@@ -67,7 +67,7 @@ mod tests {
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
         {
-            let msg = test_utils::SimpleMessage {
+            let msg = api::tests::SimpleMessage {
                 field_int32: 111,
                 field_int64: 222,
                 field_float: 333.3,
@@ -77,7 +77,7 @@ mod tests {
                 field_timestamp: vec![0, 0, 2_454_923],
             };
 
-            test_utils::write_simple_message_parquet(&parquet.path(), &msg);
+            api::tests::write_simple_message_parquet(&parquet.path(), &msg);
 
             assert_eq!(true, run(&args, &mut output).is_ok());
         }

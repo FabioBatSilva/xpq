@@ -76,15 +76,15 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use api;
+    use api::tests::time_to_str;
     use std::io::Cursor;
     use std::str;
-    use utils::test_utils;
-    use utils::test_utils::time_to_str;
 
     #[test]
     fn test_sample_simple_messages() {
         let mut output = Cursor::new(Vec::new());
-        let parquet = test_utils::temp_file("msg", ".parquet");
+        let parquet = api::tests::temp_file("msg", ".parquet");
         let expected = vec![
             "field_int32  field_int64  field_float  field_double  field_string  field_boolean  field_timestamp",
             &format!("1            2            3.3          4.4           \"5\"           true           {}", time_to_str(1_238_544_000_000)),
@@ -98,7 +98,7 @@ mod tests {
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
         {
-            let msg1 = test_utils::SimpleMessage {
+            let msg1 = api::tests::SimpleMessage {
                 field_int32: 1,
                 field_int64: 2,
                 field_float: 3.3,
@@ -107,7 +107,7 @@ mod tests {
                 field_boolean: true,
                 field_timestamp: vec![0, 0, 2_454_923],
             };
-            let msg2 = test_utils::SimpleMessage {
+            let msg2 = api::tests::SimpleMessage {
                 field_int32: 11,
                 field_int64: 22,
                 field_float: 33.3,
@@ -117,7 +117,7 @@ mod tests {
                 field_timestamp: vec![4_165_425_152, 13, 2_454_923],
             };
 
-            test_utils::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
+            api::tests::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
 
             assert_eq!(true, run(&args, &mut output).is_ok());
         }
@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn test_sample_simple_messages_columns() {
         let mut output = Cursor::new(Vec::new());
-        let parquet = test_utils::temp_file("msg", ".parquet");
+        let parquet = api::tests::temp_file("msg", ".parquet");
         let path_str = parquet.path().to_str().unwrap();
         let path = parquet.path();
         let expected = vec![
@@ -146,7 +146,7 @@ mod tests {
         let arg_vec = vec!["sample", path_str, "-c=field_boolean", "-c=field_int32"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        let msg1 = test_utils::SimpleMessage {
+        let msg1 = api::tests::SimpleMessage {
             field_int32: 1,
             field_int64: 2,
             field_float: 3.3,
@@ -155,7 +155,7 @@ mod tests {
             field_boolean: true,
             field_timestamp: vec![0, 0, 2_454_923],
         };
-        let msg2 = test_utils::SimpleMessage {
+        let msg2 = api::tests::SimpleMessage {
             field_int32: 11,
             field_int64: 22,
             field_float: 33.3,
@@ -165,7 +165,7 @@ mod tests {
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
 
-        test_utils::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 

@@ -14,7 +14,6 @@ mod api;
 mod command;
 mod output;
 mod reader;
-mod utils;
 
 fn run(matches: ArgMatches) -> api::Result<()> {
     let out = &mut std::io::stdout();
