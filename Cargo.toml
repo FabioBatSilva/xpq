@@ -18,6 +18,7 @@ walkdir = "2.2.7"
 tabwriter = "1.1.0"
 quick-error = "1.2.2"
 unicode-width = "0.1.5"
+streaming-stats = "0.2"
 parquet = { git = "https://github.com/apache/arrow", rev = "445482e" }
 
 [dev-dependencies]
