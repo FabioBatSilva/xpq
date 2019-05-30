@@ -64,14 +64,14 @@ fn format_row(
     row.into_bytes()
 }
 
-pub struct TableOutputWriter<T> {
+pub struct OutputWriter<T> {
     headers: Vec<String>,
     values: T,
     minwidth: usize,
     batch_size: usize,
 }
 
-impl<T> TableOutputWriter<T>
+impl<T> OutputWriter<T>
 where
     T: Iterator<Item = Result<Vec<String>>>,
 {
@@ -163,7 +163,7 @@ mod tests {
         ];
 
         let iter = values.into_iter();
-        let mut writer = TableOutputWriter::new(headers, iter);
+        let mut writer = OutputWriter::new(headers, iter);
 
         writer.write(&mut buff).unwrap();
 
@@ -180,7 +180,7 @@ mod tests {
         let values = vec![Ok(vec![String::from("1")]), Ok(vec![String::from("2")])];
 
         let iter = values.into_iter();
-        let mut writer = TableOutputWriter::new(headers, iter);
+        let mut writer = OutputWriter::new(headers, iter);
 
         writer.write(&mut buff).unwrap();
 
@@ -202,7 +202,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         let iter = values.into_iter();
-        let mut writer = TableOutputWriter::new(headers, iter);
+        let mut writer = OutputWriter::new(headers, iter);
 
         writer.write(&mut buff).unwrap();
 

@@ -1,5 +1,5 @@
 use crate::command::args;
-use crate::output::TableOutputWriter;
+use crate::output::OutputWriter;
 use crate::reader::ParquetFile;
 use api::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
@@ -49,7 +49,7 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
     let headers = parquet.field_names()?;
 
     let iter = parquet.iter().take(limit);
-    let mut writer = TableOutputWriter::new(headers, iter);
+    let mut writer = OutputWriter::new(headers, iter);
 
     writer.write(out)
 }
