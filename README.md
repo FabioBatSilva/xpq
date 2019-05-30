@@ -21,14 +21,14 @@ curl -s https://api.github.com/repos/FabioBatSilva/xpq/releases/latest \
   | grep apple-darwin \
   | cut -d : -f 2,3 \
   | tr -d \" \
-  | wget -O xpq -qi -
+  | wget -qi -
 ```
 
 Make it executable
 ```bash
-chmod +x ./xpq
+chmod +x ./xpq-*-apple-darwin
 
-mv ./xpq /usr/local/bin/xpq
+mv ./xpq-*-apple-darwin /usr/local/bin/xpq
 ```
 
 You can also compile from source using cargo
@@ -43,6 +43,7 @@ cargo install --git https://github.com/FabioBatSilva/xpq.git --force
 * **count** - Show num of rows.
 * **schema** - Show parquet schema.
 * **sample** - Randomly sample rows from parquet.
+* **frequency** - Show frequency counts for each value.
 
 ### Quick tour
 

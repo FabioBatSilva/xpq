@@ -3,6 +3,7 @@ extern crate either;
 extern crate parquet;
 extern crate quick_error;
 extern crate rand;
+extern crate stats;
 extern crate tabwriter;
 extern crate unicode_width;
 extern crate walkdir;
@@ -23,6 +24,7 @@ fn run(matches: ArgMatches) -> api::Result<()> {
         ("schema", Some(m)) => command::schema::run(m, out),
         ("sample", Some(m)) => command::sample::run(m, out),
         ("count", Some(m)) => command::count::run(m, out),
+        ("frequency", Some(m)) => command::frequency::run(m, out),
         _ => Ok(()),
     }
 }
@@ -38,6 +40,7 @@ fn main() {
             command::count::def(),
             command::schema::def(),
             command::sample::def(),
+            command::frequency::def(),
         ]);
 
     if let Err(e) = run(app.get_matches()) {
