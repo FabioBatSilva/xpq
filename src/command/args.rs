@@ -1,8 +1,15 @@
 use crate::api::{Error, Result};
+use crate::output::OutputFormat;
 use clap::ArgMatches;
+use std::convert::TryFrom;
 use std::path::Path;
 use std::str;
 
+/// Gets the value of a specific argument
+/// Converting the ArgMatches value to a Path reference.
+///
+/// If the option wasn't present or is invalid returns
+/// `crate::api::Error::InvalidArgument`.
 pub fn path_value<'a>(matches: &'a ArgMatches<'a>, name: &str) -> Result<&'a Path> {
     matches
         .value_of(name)
@@ -11,6 +18,10 @@ pub fn path_value<'a>(matches: &'a ArgMatches<'a>, name: &str) -> Result<&'a Pat
         .ok_or_else(|| Error::InvalidArgument(name.to_string()))
 }
 
+/// Gets all values of a specific argument.
+///
+/// If the option wasn't present `None` or `Some(crate::api::Error::InvalidArgument)` when
+/// invalid.
 pub fn string_values(matches: &ArgMatches, name: &str) -> Result<Option<Vec<String>>> {
     matches
         .values_of(name)
@@ -24,10 +35,30 @@ pub fn string_values(matches: &ArgMatches, name: &str) -> Result<Option<Vec<Stri
         .ok_or_else(|| Error::InvalidArgument(name.to_string()))
 }
 
+/// Gets the value of a specific argument
+/// Converting the ArgMatches value to a usize.
+///
+/// If the option wasn't present or is invalid returns
+/// `crate::api::Error::InvalidArgument`.
 pub fn usize_value(matches: &ArgMatches, name: &str) -> Result<usize> {
     matches
         .value_of(name)
         .map(str::parse)
+        .filter(std::result::Result::is_ok)
+        .map(std::result::Result::unwrap)
+        .ok_or_else(|| Error::InvalidArgument(name.to_string()))
+}
+
+/// Gets the value of a specific argument
+/// Converting the ArgMatches value to a `crate::output::OutputFormat`.
+///
+/// If the option wasn't present or is invalid returns
+/// `crate::api::Error::InvalidArgument`.
+pub fn output_format_value(matches: &ArgMatches, name: &str) -> Result<OutputFormat> {
+    matches
+        .value_of(name)
+        .map(String::from)
+        .map(OutputFormat::try_from)
         .filter(std::result::Result::is_ok)
         .map(std::result::Result::unwrap)
         .ok_or_else(|| Error::InvalidArgument(name.to_string()))
@@ -88,6 +119,19 @@ mod tests {
         assert_eq!(
             Err(Error::InvalidArgument("limit".to_string())),
             usize_value(&invalid, name)
+        );
+    }
+
+    #[test]
+    fn test_args_output_format_value() {
+        let name = "format";
+        let valid = create_matches(name, "table");
+        let invalid = create_matches(name, "NOT VALID");
+
+        assert_eq!(Ok(OutputFormat::Tabular), output_format_value(&valid, name));
+        assert_eq!(
+            Err(Error::InvalidArgument(name.to_string())),
+            output_format_value(&invalid, name)
         );
     }
 

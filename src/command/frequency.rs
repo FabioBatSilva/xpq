@@ -1,5 +1,5 @@
 use crate::command::args;
-use crate::output::OutputWriter;
+use crate::output::{OutputFormat, OutputWriter};
 use crate::reader::ParquetFile;
 use api::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
@@ -71,7 +71,7 @@ pub fn def() -> App<'static, 'static> {
         .arg(
             Arg::with_name("format")
                 .help("Output format")
-                .possible_values(&["table"])
+                .possible_values(&OutputFormat::values())
                 .default_value("table")
                 .long("format")
                 .short("f"),
@@ -86,6 +86,7 @@ pub fn def() -> App<'static, 'static> {
 }
 
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
+    let format = args::output_format_value(matches, "format")?;
     let columns = args::string_values(matches, "columns")?;
     let limit = args::usize_value(matches, "limit")?;
     let path = args::path_value(matches, "path")?;
@@ -100,7 +101,7 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
     ];
 
     let iter = format_rows(fields, vec);
-    let mut writer = OutputWriter::new(headers, iter);
+    let mut writer = OutputWriter::new(headers, iter).format(format);
 
     writer.write(out)
 }
@@ -149,10 +150,56 @@ mod tests {
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
 
+        assert_eq!(4, actual.lines().count());
         assert!(actual.starts_with("FIELD         VALUE  COUNT"));
         assert!(actual.contains("field_int32   1      1"));
         assert!(actual.contains("field_int32   2      1"));
         assert!(actual.contains("field_string  \"two\"  2"));
+        assert!(actual.ends_with(""));
+    }
+
+    #[test]
+    fn test_simple_messages_frequency_vertical_format() {
+        let mut output = Cursor::new(Vec::new());
+        let parquet = api::tests::temp_file("msg", ".parquet");
+        let path_str = parquet.path().to_str().unwrap();
+        let path = parquet.path();
+
+        let subcomand = def();
+        let arg_vec = vec!["frequency", path_str, "-f=v", "-c=field_boolean"];
+        let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
+
+        let msg1 = api::tests::SimpleMessage {
+            field_int32: 1,
+            field_int64: 2,
+            field_float: 3.3,
+            field_double: 4.4,
+            field_string: "5".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![0, 0, 2_454_923],
+        };
+        let msg2 = api::tests::SimpleMessage {
+            field_int32: 2,
+            field_int64: 22,
+            field_float: 33.3,
+            field_double: 44.4,
+            field_string: "55".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+        };
+
+        api::tests::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+
+        assert_eq!(true, run(&args, &mut output).is_ok());
+
+        let vec = output.into_inner();
+        let actual = str::from_utf8(&vec).unwrap();
+
+        assert_eq!(4, actual.lines().count());
+        assert!(actual.starts_with(""));
+        assert!(actual.contains("FIELD:  field_boolean"));
+        assert!(actual.contains("VALUE:  true"));
+        assert!(actual.contains("COUNT:  2"));
         assert!(actual.ends_with(""));
     }
 }
