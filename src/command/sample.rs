@@ -1,5 +1,5 @@
 use crate::command::args;
-use crate::output::TableOutputWriter;
+use crate::output::{OutputFormat, OutputWriter};
 use crate::reader::ParquetFile;
 use api::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
@@ -30,7 +30,7 @@ pub fn def() -> App<'static, 'static> {
         .arg(
             Arg::with_name("format")
                 .help("Output format")
-                .possible_values(&["table"])
+                .possible_values(&OutputFormat::values())
                 .default_value("table")
                 .long("format")
                 .short("f"),
@@ -54,6 +54,7 @@ fn sample_indexes(sample: usize, size: usize) -> HashSet<usize> {
 }
 
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
+    let format = args::output_format_value(matches, "format")?;
     let columns = args::string_values(matches, "columns")?;
     let sample = args::usize_value(matches, "sample")?;
     let path = args::path_value(matches, "path")?;
@@ -68,7 +69,7 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
         .filter(|t| indexes.contains(&t.0))
         .map(|r| r.1);
 
-    let mut writer = TableOutputWriter::new(headers, iter);
+    let mut writer = OutputWriter::new(headers, iter).format(format);
 
     writer.write(out)
 }
@@ -97,30 +98,28 @@ mod tests {
         let arg_vec = vec!["sample", parquet.path().to_str().unwrap()];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        {
-            let msg1 = api::tests::SimpleMessage {
-                field_int32: 1,
-                field_int64: 2,
-                field_float: 3.3,
-                field_double: 4.4,
-                field_string: "5".to_string(),
-                field_boolean: true,
-                field_timestamp: vec![0, 0, 2_454_923],
-            };
-            let msg2 = api::tests::SimpleMessage {
-                field_int32: 11,
-                field_int64: 22,
-                field_float: 33.3,
-                field_double: 44.4,
-                field_string: "55".to_string(),
-                field_boolean: false,
-                field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-            };
+        let msg1 = api::tests::SimpleMessage {
+            field_int32: 1,
+            field_int64: 2,
+            field_float: 3.3,
+            field_double: 4.4,
+            field_string: "5".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![0, 0, 2_454_923],
+        };
+        let msg2 = api::tests::SimpleMessage {
+            field_int32: 11,
+            field_int64: 22,
+            field_float: 33.3,
+            field_double: 44.4,
+            field_string: "55".to_string(),
+            field_boolean: false,
+            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+        };
 
-            api::tests::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
 
-            assert_eq!(true, run(&args, &mut output).is_ok());
-        }
+        assert_eq!(true, run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -166,6 +165,61 @@ mod tests {
         };
 
         api::tests::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+
+        assert_eq!(true, run(&args, &mut output).is_ok());
+
+        let vec = output.into_inner();
+        let actual = str::from_utf8(&vec).unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_sample_simple_messages_with_format_vertical() {
+        let mut output = Cursor::new(Vec::new());
+        let parquet = api::tests::temp_file("msg", ".parquet");
+        let path_str = parquet.path().to_str().unwrap();
+        let expected = vec![
+            "",
+            "field_boolean:  true",
+            "field_int32:    1",
+            "",
+            "field_boolean:  false",
+            "field_int32:    11",
+            "",
+        ]
+        .join("\n");
+
+        let subcomand = def();
+        let arg_vec = vec![
+            "sample",
+            path_str,
+            "-f=vertical",
+            "-c=field_boolean",
+            "-c=field_int32",
+        ];
+        let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
+
+        let msg1 = api::tests::SimpleMessage {
+            field_int32: 1,
+            field_int64: 2,
+            field_float: 3.3,
+            field_double: 4.4,
+            field_string: "5".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![0, 0, 2_454_923],
+        };
+        let msg2 = api::tests::SimpleMessage {
+            field_int32: 11,
+            field_int64: 22,
+            field_float: 33.3,
+            field_double: 44.4,
+            field_string: "55".to_string(),
+            field_boolean: false,
+            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+        };
+
+        api::tests::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 
