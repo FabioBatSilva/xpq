@@ -1,4 +1,5 @@
 extern crate clap;
+extern crate csv;
 extern crate either;
 extern crate parquet;
 extern crate quick_error;
