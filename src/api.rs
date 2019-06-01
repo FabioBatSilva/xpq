@@ -23,6 +23,11 @@ quick_error! {
             description("IO error")
             from(e: io::Error) -> (format!("{}", e))
         }
+        CSV(err: String) {
+            display("CSV error: {}", err)
+            description("CSV error")
+            from(e: csv::Error) -> (format!("{}", e))
+        }
         /// Invalid argument error.
         InvalidArgument(name: String) {
             display("Invalid argument: {}", name)
