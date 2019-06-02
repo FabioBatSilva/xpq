@@ -69,21 +69,60 @@ fn get_row_fields(
 
     result
 }
+#[inline]
+fn get_row_filters(
+    filelds: &[(usize, String)],
+    filters: &Option<HashMap<String, Regex>>,
+) -> Option<HashMap<usize, Regex>> {
+    match filters {
+        Some(filter_map) => {
+            let mut result = HashMap::new();
+            let field_map = filelds
+                .iter()
+                .enumerate()
+                .map(|t| ((t.1).1.to_lowercase(), t.0))
+                .collect::<HashMap<_, _>>();
+
+            for (field, regex) in filter_map.into_iter() {
+                if let Some(index) = field_map.get(&field.to_lowercase()) {
+                    result.insert(*index, regex.clone());
+                }
+            }
+
+            Some(result)
+        }
+        None => None,
+    }
+}
 
 pub struct ParquetFile {
     path: PathBuf,
     fields: Option<Vec<String>>,
+    filters: Option<HashMap<String, Regex>>,
 }
 
 impl ParquetFile {
     pub fn new(path: PathBuf) -> Self {
-        Self { path, fields: None }
+        Self {
+            path,
+            fields: None,
+            filters: None,
+        }
     }
 
     pub fn with_fields(self, fields: Option<Vec<String>>) -> Self {
         Self {
             fields,
             path: self.path,
+            filters: self.filters,
+        }
+    }
+
+    pub fn with_filters(self, filters: Option<HashMap<String, Regex>>) -> Self {
+        Self {
+            filters,
+            path: self.path,
+            fields: self.fields,
         }
     }
 
@@ -125,14 +164,16 @@ impl ParquetFile {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = Result<Vec<String>>> + '_ {
-        let field_names = self.fields.clone();
         let iter = self.files();
+        let field_names = self.fields.clone();
+        let field_filter = self.filters.clone();
 
-        iter.map(move |p| -> Result<Iter<_>> {
+        iter.map(move |p| {
             let reader = create_parquet_reader(p.as_path())?;
             let fields = get_row_fields(&reader, &field_names);
+            let filters = get_row_filters(&fields, &field_filter);
             let row_iter: RowIter<'static> = reader.into_iter();
-            let iterator: Iter<_> = Iter::new(row_iter, fields, None);
+            let iterator: Iter<_> = Iter::new(row_iter, fields, filters);
 
             Ok(iterator)
         })
@@ -182,7 +223,7 @@ impl From<(&Path, Option<Vec<String>>)> for ParquetFile {
 struct Iter<T> {
     fields: Vec<(usize, String)>,
     values: Either<T, Vec<Error>>,
-    filters: Option<Vec<(usize, Regex)>>,
+    filters: Option<HashMap<usize, Regex>>,
 }
 
 impl<T> Iter<T>
@@ -192,7 +233,7 @@ where
     fn new(
         values: T,
         fields: Vec<(usize, String)>,
-        filters: Option<Vec<(usize, Regex)>>,
+        filters: Option<HashMap<usize, Regex>>,
     ) -> Self {
         Self {
             values: Either::Left(values),
@@ -715,5 +756,63 @@ mod tests {
             result_empty.err().unwrap(),
             Error::InvalidParquet(empty.path().to_path_buf())
         );
+    }
+
+    #[test]
+    #[allow(clippy::trivial_regex)]
+    fn test_reader_field_filter() {
+        let dir = api::tests::temp_dir();
+        let path = dir.path().join("file.parquet");
+
+        File::create(path.clone()).unwrap();
+
+        let msg1 = api::tests::SimpleMessage {
+            field_int32: 1,
+            field_int64: 2,
+            field_float: 3.3,
+            field_double: 4.4,
+            field_string: "V1.1".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![0, 0, 2_454_923],
+        };
+
+        let msg2 = api::tests::SimpleMessage {
+            field_int32: 11,
+            field_int64: 22,
+            field_float: 33.3,
+            field_double: 44.4,
+            field_string: "V1.2".to_string(),
+            field_boolean: false,
+            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+        };
+
+        let msg3 = api::tests::SimpleMessage {
+            field_int32: 111,
+            field_int64: 222,
+            field_float: 333.3,
+            field_double: 444.4,
+            field_string: "V2.0".to_string(),
+            field_boolean: false,
+            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+        };
+
+        api::tests::write_simple_messages_parquet(&path, &[&msg1, &msg2, &msg3]);
+
+        let mut filters = HashMap::new();
+        let fields = vec![String::from("field_int32"), String::from("field_string")];
+
+        filters.insert(String::from("field_string"), Regex::new("V1").unwrap());
+
+        let result = ParquetFile::from(dir.path())
+            .with_filters(Some(filters))
+            .with_fields(Some(fields))
+            .iter()
+            .filter_map(Result::ok)
+            .collect::<Vec<_>>();
+
+        assert_eq!(result.len(), 2);
+
+        assert_eq!(result[0], vec!["1", "\"V1.1\""]);
+        assert_eq!(result[1], vec!["11", "\"V1.2\""]);
     }
 }
