@@ -1033,6 +1033,7 @@ dependencies = [
  "parquet 0.14.0-SNAPSHOT (git+https://github.com/apache/arrow?rev=445482e)",
  "quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 1.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "streaming-stats 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tabwriter 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.7 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -7,6 +7,7 @@ use parquet::file::reader::SerializedFileReader;
 use parquet::record::reader::RowIter;
 use parquet::record::Row;
 use parquet::record::RowFormatter;
+use regex::Regex;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
@@ -131,7 +132,7 @@ impl ParquetFile {
             let reader = create_parquet_reader(p.as_path())?;
             let fields = get_row_fields(&reader, &field_names);
             let row_iter: RowIter<'static> = reader.into_iter();
-            let iterator: Iter<_> = Iter::new(row_iter, fields);
+            let iterator: Iter<_> = Iter::new(row_iter, fields, None);
 
             Ok(iterator)
         })
@@ -179,17 +180,23 @@ impl From<(&Path, Option<Vec<String>>)> for ParquetFile {
 }
 
 struct Iter<T> {
-    values: Either<T, Vec<Error>>,
     fields: Vec<(usize, String)>,
+    values: Either<T, Vec<Error>>,
+    filters: Option<Vec<(usize, Regex)>>,
 }
 
 impl<T> Iter<T>
 where
     T: Iterator<Item = Row>,
 {
-    fn new(values: T, fields: Vec<(usize, String)>) -> Self {
+    fn new(
+        values: T,
+        fields: Vec<(usize, String)>,
+        filters: Option<Vec<(usize, Regex)>>,
+    ) -> Self {
         Self {
             values: Either::Left(values),
+            filters,
             fields,
         }
     }
@@ -197,15 +204,27 @@ where
     fn err(error: Error) -> Self {
         Self {
             values: Either::Right(vec![error]),
+            filters: None,
             fields: vec![],
         }
     }
 
-    fn format(&self, row: &Row) -> Vec<String> {
-        self.fields
+    fn filter_map_row(&self, row: Row) -> Option<Result<Vec<String>>> {
+        let result = self
+            .fields
             .iter()
             .map(|e| format!("{}", row.fmt(e.0)))
-            .collect()
+            .collect::<Vec<_>>();
+
+        if let Some(ref vec) = self.filters {
+            for (i, regex) in vec {
+                if !regex.is_match(&result[*i]) {
+                    return None;
+                }
+            }
+        }
+
+        Some(Ok(result))
     }
 }
 
@@ -217,7 +236,11 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.values {
-            Either::Left(ref mut iter) => iter.next().map(|r| Ok(self.format(&r))),
+            Either::Left(ref mut iter) => iter
+                .next()
+                .map(|r| self.filter_map_row(r))
+                .filter(Option::is_some)
+                .map(Option::unwrap),
             Either::Right(ref mut err) => err.pop().map(std::result::Result::Err),
         }
     }
