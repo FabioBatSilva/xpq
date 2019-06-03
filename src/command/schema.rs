@@ -63,24 +63,13 @@ mod tests {
         .join("\n");
 
         let subcomand = def();
+        let msgs = api::tests::create_simple_messages(1);
         let arg_vec = vec!["schema", parquet.path().to_str().unwrap()];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        {
-            let msg = api::tests::SimpleMessage {
-                field_int32: 111,
-                field_int64: 222,
-                field_float: 333.3,
-                field_double: 444.4,
-                field_string: "555".to_string(),
-                field_boolean: false,
-                field_timestamp: vec![0, 0, 2_454_923],
-            };
+        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
 
-            api::tests::write_simple_message_parquet(&parquet.path(), &msg);
-
-            assert_eq!(true, run(&args, &mut output).is_ok());
-        }
+        assert_eq!(true, run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();

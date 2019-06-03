@@ -250,14 +250,17 @@ where
         }
     }
 
-    fn filter_map_row(&self, row: Row) -> Option<Result<Vec<String>>> {
-        let result = self
-            .fields
+    fn filter_map_row(
+        row: Row,
+        fields: &[(usize, String)],
+        filters: &Option<HashMap<usize, Regex>>,
+    ) -> Option<Result<Vec<String>>> {
+        let result = fields
             .iter()
             .map(|e| format!("{}", row.fmt(e.0)))
             .collect::<Vec<_>>();
 
-        if let Some(ref vec) = self.filters {
+        if let Some(ref vec) = filters {
             for (i, regex) in vec {
                 if !regex.is_match(&result[*i]) {
                     return None;
@@ -266,6 +269,25 @@ where
         }
 
         Some(Ok(result))
+    }
+
+    fn next_row(
+        iter: &mut Iterator<Item = Row>,
+        fields: &[(usize, String)],
+        filters: &Option<HashMap<usize, Regex>>,
+    ) -> Option<Result<Vec<String>>> {
+        // while next try to find a matching row
+        for row in iter {
+            if let Some(next) = Iter::<T>::filter_map_row(row, fields, filters) {
+                return Some(next);
+            }
+        }
+
+        None
+    }
+
+    fn next_err(err: &mut Vec<Error>) -> Option<Result<Vec<String>>> {
+        err.pop().map(std::result::Result::Err)
     }
 }
 
@@ -277,12 +299,10 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.values {
-            Either::Left(ref mut iter) => iter
-                .next()
-                .map(|r| self.filter_map_row(r))
-                .filter(Option::is_some)
-                .map(Option::unwrap),
-            Either::Right(ref mut err) => err.pop().map(std::result::Result::Err),
+            Either::Left(ref mut iter) => {
+                Iter::<T>::next_row(iter, &self.fields, &self.filters)
+            }
+            Either::Right(ref mut err) => Iter::<T>::next_err(err),
         }
     }
 }
@@ -300,22 +320,20 @@ mod tests {
         let path1 = dir.path().join("1.snappy.parquet");
         let path2 = dir.path().join("2.snappy.parquet");
         let path3 = dir.path().join("3.snappy.parquet");
+        let msg = api::tests::SimpleMessage {
+            field_int32: 1,
+            field_int64: 2,
+            field_float: 3.3,
+            field_double: 4.4,
+            field_string: "5".to_string(),
+            field_boolean: true,
+            field_timestamp: vec![0, 0, 2_454_923],
+        };
 
         File::create(path1.clone()).unwrap();
         File::create(path2.clone()).unwrap();
 
-        api::tests::write_simple_message_parquet(
-            &path1,
-            &api::tests::SimpleMessage {
-                field_int32: 1,
-                field_int64: 2,
-                field_float: 3.3,
-                field_double: 4.4,
-                field_string: "5".to_string(),
-                field_boolean: true,
-                field_timestamp: vec![0, 0, 2_454_923],
-            },
-        );
+        api::tests::write_simple_messages_parquet(&path1, &[msg]);
 
         let result1 = create_parquet_reader(&path1);
         let result2 = create_parquet_reader(&path2);
@@ -379,7 +397,7 @@ mod tests {
             field_timestamp: vec![0, 0, 2_454_923],
         };
 
-        api::tests::write_simple_messages_parquet(&path, &[&msg]);
+        api::tests::write_simple_messages_parquet(&path, &[msg]);
 
         let reader = create_parquet_reader(&path).unwrap();
         let result1 = get_row_fields(&reader, &None);
@@ -446,8 +464,8 @@ mod tests {
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
 
-        api::tests::write_simple_message_parquet(&path1, &msg1);
-        api::tests::write_simple_message_parquet(&path2, &msg2);
+        api::tests::write_simple_messages_parquet(&path1, &[msg1]);
+        api::tests::write_simple_messages_parquet(&path2, &[msg2]);
 
         let parquet_dir = ParquetFile::from(dir.path());
         let parquet_path1 = ParquetFile::from(path1.as_path());
@@ -499,8 +517,8 @@ mod tests {
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
 
-        api::tests::write_simple_messages_parquet(&path1, &[&msg1, &msg2]);
-        api::tests::write_simple_messages_parquet(&path2, &[&msg3]);
+        api::tests::write_simple_messages_parquet(&path1, &[msg1, msg2]);
+        api::tests::write_simple_messages_parquet(&path2, &[msg3]);
 
         let parquet_dir = ParquetFile::from(dir.path());
         let parquet_path1 = ParquetFile::from(path1.as_path());
@@ -533,7 +551,7 @@ mod tests {
             field_timestamp: vec![0, 0, 2_454_923],
         };
 
-        api::tests::write_simple_message_parquet(&path1, &msg1);
+        api::tests::write_simple_messages_parquet(&path1, &[msg1]);
 
         let parquet_ok = ParquetFile::from(path1.as_path());
         let parquet_err = ParquetFile::from(path2.as_path());
@@ -587,7 +605,7 @@ mod tests {
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
 
-        api::tests::write_simple_messages_parquet(path.as_path(), &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(path.as_path(), &[msg1, msg2]);
 
         let fields = vec![String::from("field_int32"), String::from("field_int64")];
         let reader = ParquetFile::from(dir.path()).with_fields(Some(fields));
@@ -627,7 +645,7 @@ mod tests {
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
 
-        api::tests::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&path, &[msg1, msg2]);
 
         let reader = ParquetFile::from(dir.path());
         let result = reader.iter().filter_map(Result::ok).collect::<Vec<_>>();
@@ -699,7 +717,7 @@ mod tests {
             field_timestamp: vec![0, 0, 2_454_923],
         };
 
-        api::tests::write_simple_messages_parquet(&path, &[&msg]);
+        api::tests::write_simple_messages_parquet(&path, &[msg]);
 
         let fields = vec![String::from("field_string"), String::from("FIELD_INT32")];
 
@@ -771,7 +789,7 @@ mod tests {
             field_int64: 2,
             field_float: 3.3,
             field_double: 4.4,
-            field_string: "V1.1".to_string(),
+            field_string: "odd 1".to_string(),
             field_boolean: true,
             field_timestamp: vec![0, 0, 2_454_923],
         };
@@ -781,7 +799,7 @@ mod tests {
             field_int64: 22,
             field_float: 33.3,
             field_double: 44.4,
-            field_string: "V1.2".to_string(),
+            field_string: "even 1".to_string(),
             field_boolean: false,
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
@@ -791,17 +809,17 @@ mod tests {
             field_int64: 222,
             field_float: 333.3,
             field_double: 444.4,
-            field_string: "V2.0".to_string(),
+            field_string: "odd 2".to_string(),
             field_boolean: false,
             field_timestamp: vec![4_165_425_152, 13, 2_454_923],
         };
 
-        api::tests::write_simple_messages_parquet(&path, &[&msg1, &msg2, &msg3]);
+        api::tests::write_simple_messages_parquet(&path, &[msg1, msg2, msg3]);
 
         let mut filters = HashMap::new();
         let fields = vec![String::from("field_int32"), String::from("field_string")];
 
-        filters.insert(String::from("field_string"), Regex::new("V1").unwrap());
+        filters.insert(String::from("field_string"), Regex::new("odd").unwrap());
 
         let result = ParquetFile::from(dir.path())
             .with_filters(Some(filters))
@@ -812,7 +830,7 @@ mod tests {
 
         assert_eq!(result.len(), 2);
 
-        assert_eq!(result[0], vec!["1", "\"V1.1\""]);
-        assert_eq!(result[1], vec!["11", "\"V1.2\""]);
+        assert_eq!(result[0], vec!["1", "\"odd 1\""]);
+        assert_eq!(result[1], vec!["111", "\"odd 2\""]);
     }
 }

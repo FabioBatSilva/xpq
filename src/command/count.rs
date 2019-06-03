@@ -54,29 +54,11 @@ mod tests {
         let expected = "COUNT\n2\n";
 
         let subcomand = def();
+        let msgs = api::tests::create_simple_messages(2);
         let arg_vec = vec!["count", parquet.path().to_str().unwrap()];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        let msg1 = api::tests::SimpleMessage {
-            field_int32: 1,
-            field_int64: 2,
-            field_float: 3.3,
-            field_double: 4.4,
-            field_string: "5".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
-        };
-        let msg2 = api::tests::SimpleMessage {
-            field_int32: 11,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "55".to_string(),
-            field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
-
-        api::tests::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 
@@ -93,29 +75,11 @@ mod tests {
         let expected = "\nCOUNT:  2\n";
 
         let subcomand = def();
+        let msgs = api::tests::create_simple_messages(2);
         let arg_vec = vec!["count", parquet.path().to_str().unwrap(), "-f=v"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        let msg1 = api::tests::SimpleMessage {
-            field_int32: 1,
-            field_int64: 2,
-            field_float: 3.3,
-            field_double: 4.4,
-            field_string: "5".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
-        };
-        let msg2 = api::tests::SimpleMessage {
-            field_int32: 11,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "55".to_string(),
-            field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
-
-        api::tests::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 
@@ -132,29 +96,11 @@ mod tests {
         let expected = "COUNT\n2\n";
 
         let subcomand = def();
+        let msgs = api::tests::create_simple_messages(2);
         let arg_vec = vec!["count", parquet.path().to_str().unwrap(), "-f=c"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        let msg1 = api::tests::SimpleMessage {
-            field_int32: 1,
-            field_int64: 2,
-            field_float: 3.3,
-            field_double: 4.4,
-            field_string: "5".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
-        };
-        let msg2 = api::tests::SimpleMessage {
-            field_int32: 11,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "55".to_string(),
-            field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
-
-        api::tests::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 

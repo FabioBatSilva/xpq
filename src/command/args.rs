@@ -1,6 +1,8 @@
 use crate::api::{Error, Result};
 use crate::output::OutputFormat;
 use clap::ArgMatches;
+use regex::Regex;
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::Path;
 use std::str;
@@ -33,6 +35,39 @@ pub fn string_values(matches: &ArgMatches, name: &str) -> Result<Option<Vec<Stri
         .or_else(|| Some(vec![]))
         .map(|vec| Some(vec).filter(|v| !v.is_empty()))
         .ok_or_else(|| Error::InvalidArgument(name.to_string()))
+}
+
+/// Gets all values of a specific argument.
+///
+/// If the option wasn't present `None` or `Some(crate::api::Error::InvalidArgument)` when
+/// invalid.
+pub fn filter_values(
+    matches: &ArgMatches,
+    name: &str,
+) -> Result<Option<HashMap<String, Regex>>> {
+    match matches.values_of(name) {
+        Some(values) => {
+            let mut result = HashMap::new();
+            let filters = values.map(String::from).collect::<Vec<_>>();
+
+            for entry in filters {
+                let filter = entry.as_str();
+                let parts = filter.splitn(2, ':').collect::<Vec<_>>();
+
+                if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
+                    return Err(Error::InvalidArgument(name.to_string()));
+                }
+
+                let field = String::from(parts[0]);
+                let regex = Regex::new(&parts[1])?;
+
+                result.insert(field, regex);
+            }
+
+            Ok(Some(result))
+        }
+        None => Ok(None),
+    }
 }
 
 /// Gets the value of a specific argument
@@ -179,6 +214,48 @@ mod tests {
             ])),
             string_values(&result2, name)
         );
+    }
+
+    #[test]
+    fn test_args_filter_values() {
+        let name = "filters";
+
+        let missing_result = filter_values(&create_mult_matches(name, &[name]), name);
+
+        let simple_result =
+            filter_values(&create_mult_matches(name, &[name, "field:[a-z]"]), name);
+
+        let url_result =
+            filter_values(&create_mult_matches(name, &[name, "url:^http://"]), name);
+
+        let mult_result =
+            filter_values(&create_mult_matches(name, &[name, "a:A", "b:B"]), name);
+
+        assert!(missing_result.is_ok());
+        assert!(missing_result.as_ref().unwrap().is_none());
+
+        assert!(simple_result.is_ok());
+        assert!(simple_result.as_ref().unwrap().is_some());
+
+        assert!(url_result.is_ok());
+        assert!(url_result.as_ref().unwrap().is_some());
+
+        assert!(mult_result.is_ok());
+        assert!(mult_result.as_ref().unwrap().is_some());
+
+        let simple_result_map = simple_result.unwrap().unwrap();
+        let mult_result_map = mult_result.unwrap().unwrap();
+        let url_result_map = url_result.unwrap().unwrap();
+
+        assert_eq!(1, simple_result_map.len());
+        assert_eq!("[a-z]", simple_result_map.get("field").unwrap().as_str());
+
+        assert_eq!(1, url_result_map.len());
+        assert_eq!("^http://", url_result_map.get("url").unwrap().as_str());
+
+        assert_eq!(2, mult_result_map.len());
+        assert_eq!("A", mult_result_map.get("a").unwrap().as_str());
+        assert_eq!("B", mult_result_map.get("b").unwrap().as_str());
     }
 
     #[test]

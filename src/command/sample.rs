@@ -88,36 +88,18 @@ mod tests {
         let parquet = api::tests::temp_file("msg", ".parquet");
         let expected = vec![
             "field_int32  field_int64  field_float  field_double  field_string  field_boolean  field_timestamp",
-            &format!("1            2            3.3          4.4           \"5\"           true           {}", time_to_str(1_238_544_000_000)),
-            &format!("11           22           33.3         44.4          \"55\"          false          {}", time_to_str(1_238_544_060_000)),
+            &format!("1            11           111.3        1111.4        \"odd 11111\"   false          {}", time_to_str(1_238_544_000_000)),
+            &format!("2            22           222.3        2222.4        \"even 22222\"  true           {}", time_to_str(1_238_544_060_000)),
             ""
         ]
         .join("\n");
 
         let subcomand = def();
+        let msgs = api::tests::create_simple_messages(2);
         let arg_vec = vec!["sample", parquet.path().to_str().unwrap()];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        let msg1 = api::tests::SimpleMessage {
-            field_int32: 1,
-            field_int64: 2,
-            field_float: 3.3,
-            field_double: 4.4,
-            field_string: "5".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
-        };
-        let msg2 = api::tests::SimpleMessage {
-            field_int32: 11,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "55".to_string(),
-            field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
-
-        api::tests::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 
@@ -135,36 +117,18 @@ mod tests {
         let path = parquet.path();
         let expected = vec![
             "field_boolean  field_int32",
-            "true           1",
-            "false          11",
+            "false          1",
+            "true           2",
             "",
         ]
         .join("\n");
 
         let subcomand = def();
+        let msgs = api::tests::create_simple_messages(2);
         let arg_vec = vec!["sample", path_str, "-c=field_boolean", "-c=field_int32"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        let msg1 = api::tests::SimpleMessage {
-            field_int32: 1,
-            field_int64: 2,
-            field_float: 3.3,
-            field_double: 4.4,
-            field_string: "5".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
-        };
-        let msg2 = api::tests::SimpleMessage {
-            field_int32: 11,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "55".to_string(),
-            field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
-
-        api::tests::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&path, &msgs);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 
@@ -181,11 +145,11 @@ mod tests {
         let path_str = parquet.path().to_str().unwrap();
         let expected = vec![
             "",
-            "field_boolean:  true",
+            "field_boolean:  false",
             "field_int32:    1",
             "",
-            "field_boolean:  false",
-            "field_int32:    11",
+            "field_boolean:  true",
+            "field_int32:    2",
             "",
         ]
         .join("\n");
@@ -198,28 +162,11 @@ mod tests {
             "-c=field_boolean",
             "-c=field_int32",
         ];
+
+        let msgs = api::tests::create_simple_messages(2);
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        let msg1 = api::tests::SimpleMessage {
-            field_int32: 1,
-            field_int64: 2,
-            field_float: 3.3,
-            field_double: 4.4,
-            field_string: "5".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
-        };
-        let msg2 = api::tests::SimpleMessage {
-            field_int32: 11,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "55".to_string(),
-            field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
-
-        api::tests::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 
@@ -237,7 +184,7 @@ mod tests {
         let expected = vec![
             "field_int32,field_timestamp",
             &format!("1,{}", time_to_str(1_238_544_000_000)),
-            &format!("11,{}", time_to_str(1_238_544_060_000)),
+            &format!("2,{}", time_to_str(1_238_544_060_000)),
             "",
         ]
         .join("\n");
@@ -249,28 +196,11 @@ mod tests {
             "-f=csv",
             "-c=field_int32,field_timestamp",
         ];
+
+        let msgs = api::tests::create_simple_messages(2);
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        let msg1 = api::tests::SimpleMessage {
-            field_int32: 1,
-            field_int64: 2,
-            field_float: 3.3,
-            field_double: 4.4,
-            field_string: "5".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
-        };
-        let msg2 = api::tests::SimpleMessage {
-            field_int32: 11,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "55".to_string(),
-            field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
-
-        api::tests::write_simple_messages_parquet(&parquet.path(), &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 
