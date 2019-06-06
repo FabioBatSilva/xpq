@@ -62,6 +62,7 @@ pub fn def() -> App<'static, 'static> {
         )
         .arg(
             Arg::with_name("search")
+                .validator(args::validate_filter)
                 .help("Search columns")
                 .takes_value(true)
                 .long("search")

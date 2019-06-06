@@ -113,6 +113,26 @@ pub fn validate_path(value: String) -> std::result::Result<(), String> {
         .ok_or_else(|| format!("Path '{}' does not exist", value))
 }
 
+pub fn validate_filter(value: String) -> std::result::Result<(), String> {
+    Some(value.clone())
+        .map(|s| {
+            s.splitn(2, ':')
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+        })
+        .filter(|s| s.len() == 2)
+        .filter(|s| !s[0].is_empty() && !s[1].is_empty())
+        .map(|s| Regex::new(&s[1]))
+        .filter(std::result::Result::is_ok)
+        .map(|_| ())
+        .ok_or_else(|| {
+            format!(
+                "Invalid filter expression. Expected '<column>:<regex>' got '{}'",
+                value
+            )
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,6 +161,44 @@ mod tests {
         assert_eq!(
             Err("invalid digit found in string".to_string()),
             validate_number(invalid)
+        );
+    }
+
+    #[test]
+    fn test_args_validate_filter() {
+        assert_eq!(Ok(()), validate_filter(String::from("foo:bar")));
+        assert_eq!(Ok(()), validate_filter(String::from("foo:^ns::[a-zA-Z]*$")));
+
+        assert_eq!(
+            Err(
+                "Invalid filter expression. Expected '<column>:<regex>' got 'NOT VALID'"
+                    .to_string()
+            ),
+            validate_filter(String::from("NOT VALID"))
+        );
+
+        assert_eq!(
+            Err(
+                "Invalid filter expression. Expected '<column>:<regex>' got 'foo'"
+                    .to_string()
+            ),
+            validate_filter(String::from("foo"))
+        );
+
+        assert_eq!(
+            Err(
+                "Invalid filter expression. Expected '<column>:<regex>' got 'bar:'"
+                    .to_string()
+            ),
+            validate_filter(String::from("bar:"))
+        );
+
+        assert_eq!(
+            Err(
+                "Invalid filter expression. Expected '<column>:<regex>' got ':bar'"
+                    .to_string()
+            ),
+            validate_filter(String::from(":bar"))
         );
     }
 
@@ -220,16 +278,20 @@ mod tests {
     fn test_args_filter_values() {
         let name = "filters";
 
-        let missing_result = filter_values(&create_mult_matches(name, &[name]), name);
+        let missing_matches = create_mult_matches(name, &[name]);
+        let missing_result = filter_values(&missing_matches, name);
 
-        let simple_result =
-            filter_values(&create_mult_matches(name, &[name, "field:[a-z]"]), name);
+        let simple_matches = create_mult_matches(name, &[name, "field:[a-z]"]);
+        let simple_result = filter_values(&simple_matches, name);
 
-        let url_result =
-            filter_values(&create_mult_matches(name, &[name, "url:^http://"]), name);
+        let url_matches = create_mult_matches(name, &[name, "url:^http://"]);
+        let url_result = filter_values(&url_matches, name);
 
-        let mult_result =
-            filter_values(&create_mult_matches(name, &[name, "a:A", "b:B"]), name);
+        let mult_matches = create_mult_matches(name, &[name, "a:A", "b:B"]);
+        let mult_result = filter_values(&mult_matches, name);
+
+        let regex_matches = create_mult_matches(name, &[name, "foo:^ns::[a-zA-Z]*$"]);
+        let regex_result = filter_values(&regex_matches, name);
 
         assert!(missing_result.is_ok());
         assert!(missing_result.as_ref().unwrap().is_none());
@@ -243,7 +305,11 @@ mod tests {
         assert!(mult_result.is_ok());
         assert!(mult_result.as_ref().unwrap().is_some());
 
+        assert!(regex_result.is_ok());
+        assert!(regex_result.as_ref().unwrap().is_some());
+
         let simple_result_map = simple_result.unwrap().unwrap();
+        let regex_result_map = regex_result.unwrap().unwrap();
         let mult_result_map = mult_result.unwrap().unwrap();
         let url_result_map = url_result.unwrap().unwrap();
 
@@ -252,6 +318,12 @@ mod tests {
 
         assert_eq!(1, url_result_map.len());
         assert_eq!("^http://", url_result_map.get("url").unwrap().as_str());
+
+        assert_eq!(1, regex_result_map.len());
+        assert_eq!(
+            "^ns::[a-zA-Z]*$",
+            regex_result_map.get("foo").unwrap().as_str()
+        );
 
         assert_eq!(2, mult_result_map.len());
         assert_eq!("A", mult_result_map.get("a").unwrap().as_str());
