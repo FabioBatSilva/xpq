@@ -61,6 +61,15 @@ pub fn def() -> App<'static, 'static> {
                 .short("c"),
         )
         .arg(
+            Arg::with_name("search")
+                .validator(args::validate_filter)
+                .help("Search columns")
+                .takes_value(true)
+                .long("search")
+                .multiple(true)
+                .short("s"),
+        )
+        .arg(
             Arg::with_name("limit")
                 .validator(args::validate_number)
                 .help("Max number of rows")
@@ -88,9 +97,13 @@ pub fn def() -> App<'static, 'static> {
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
     let format = args::output_format_value(matches, "format")?;
     let columns = args::string_values(matches, "columns")?;
+    let search = args::filter_values(matches, "search")?;
     let limit = args::usize_value(matches, "limit")?;
     let path = args::path_value(matches, "path")?;
-    let parquet = ParquetFile::from((path, columns));
+    let parquet = ParquetFile::from(path)
+        .with_fields(columns)
+        .with_filters(search);
+
     let fields = parquet.field_names()?;
     let rows = parquet.iter().take(limit);
     let vec = compute(fields.len(), rows)?;
@@ -121,29 +134,51 @@ mod tests {
         let path = parquet.path();
 
         let subcomand = def();
-        let arg_vec = vec!["frequency", path_str, "-l=2", "-c=field_int32,field_string"];
+        let msgs = api::tests::create_simple_messages(4);
+        let arg_vec = vec![
+            "frequency",
+            path_str,
+            "-l=3",
+            "-c=field_int32,field_boolean",
+        ];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        let msg1 = api::tests::SimpleMessage {
-            field_int32: 1,
-            field_int64: 2,
-            field_float: 3.3,
-            field_double: 4.4,
-            field_string: "two".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
-        };
-        let msg2 = api::tests::SimpleMessage {
-            field_int32: 2,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "two".to_string(),
-            field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
+        api::tests::write_simple_messages_parquet(&path, &msgs);
 
-        api::tests::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+        assert_eq!(true, run(&args, &mut output).is_ok());
+
+        let vec = output.into_inner();
+        let actual = str::from_utf8(&vec).unwrap();
+
+        assert_eq!(6, actual.lines().count());
+        assert!(actual.starts_with("FIELD          VALUE  COUNT"));
+        assert!(actual.contains("field_int32    1      1"));
+        assert!(actual.contains("field_int32    2      1"));
+        assert!(actual.contains("field_int32    3      1"));
+        assert!(actual.contains("field_boolean  true   1"));
+        assert!(actual.contains("field_boolean  false  2"));
+        assert!(actual.ends_with(""));
+    }
+
+    #[test]
+    fn test_simple_messages_frequency_with_filters() {
+        let mut output = Cursor::new(Vec::new());
+        let parquet = api::tests::temp_file("msg", ".parquet");
+        let path_str = parquet.path().to_str().unwrap();
+        let path = parquet.path();
+
+        let subcomand = def();
+        let msgs = api::tests::create_simple_messages(3);
+        let args = subcomand
+            .get_matches_from_safe(vec![
+                "read",
+                path_str,
+                "-s=field_boolean:false",
+                "-c=field_int32,field_boolean",
+            ])
+            .unwrap();
+
+        api::tests::write_simple_messages_parquet(&path, &msgs);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 
@@ -151,10 +186,10 @@ mod tests {
         let actual = str::from_utf8(&vec).unwrap();
 
         assert_eq!(4, actual.lines().count());
-        assert!(actual.starts_with("FIELD         VALUE  COUNT"));
-        assert!(actual.contains("field_int32   1      1"));
-        assert!(actual.contains("field_int32   2      1"));
-        assert!(actual.contains("field_string  \"two\"  2"));
+        assert!(actual.starts_with("FIELD          VALUE  COUNT"));
+        assert!(actual.contains("field_int32    1      1"));
+        assert!(actual.contains("field_int32    3      1"));
+        assert!(actual.contains("field_boolean  false  2"));
         assert!(actual.ends_with(""));
     }
 
@@ -166,37 +201,39 @@ mod tests {
         let path = parquet.path();
 
         let subcomand = def();
+        let msgs = api::tests::create_simple_messages(9);
         let arg_vec = vec!["frequency", path_str, "-f=v", "-c=field_boolean"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        let msg1 = api::tests::SimpleMessage {
-            field_int32: 1,
-            field_int64: 2,
-            field_float: 3.3,
-            field_double: 4.4,
-            field_string: "5".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
-        };
-        let msg2 = api::tests::SimpleMessage {
-            field_int32: 2,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "55".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
-
-        api::tests::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&path, &msgs);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
-        let expected = "\nFIELD:  field_boolean\nVALUE:  true\nCOUNT:  2\n";
 
-        assert_eq!(actual, expected);
+        assert_eq!(8, actual.lines().count());
+        assert!(actual.contains(
+            &vec![
+                "",
+                "FIELD:  field_boolean",
+                "VALUE:  true", // 4 true
+                "COUNT:  4",
+                ""
+            ]
+            .join("\n")
+        ));
+        assert!(actual.contains(
+            &vec![
+                "",
+                "FIELD:  field_boolean",
+                "VALUE:  false",
+                "COUNT:  5",
+                ""
+            ]
+            .join("\n")
+        ));
+        assert!(actual.ends_with(""));
     }
 
     #[test]
@@ -205,38 +242,29 @@ mod tests {
         let parquet = api::tests::temp_file("msg", ".parquet");
         let path_str = parquet.path().to_str().unwrap();
         let path = parquet.path();
-        let expected = "FIELD,VALUE,COUNT\nfield_boolean,true,2\n";
 
         let subcomand = def();
-        let arg_vec = vec!["frequency", path_str, "-f=csv", "-c=field_boolean"];
+        let msgs = api::tests::create_simple_messages(3);
+        let arg_vec = vec!["frequency", path_str, "-f=csv", "-c=field_timestamp"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        let msg1 = api::tests::SimpleMessage {
-            field_int32: 1,
-            field_int64: 2,
-            field_float: 3.3,
-            field_double: 4.4,
-            field_string: "5".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
-        };
-        let msg2 = api::tests::SimpleMessage {
-            field_int32: 2,
-            field_int64: 22,
-            field_float: 33.3,
-            field_double: 44.4,
-            field_string: "55".to_string(),
-            field_boolean: true,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
-        };
-
-        api::tests::write_simple_messages_parquet(&path, &[&msg1, &msg2]);
+        api::tests::write_simple_messages_parquet(&path, &msgs);
 
         assert_eq!(true, run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
 
-        assert_eq!(actual, expected);
+        assert_eq!(3, actual.lines().count());
+        assert!(actual.starts_with("FIELD,VALUE,COUNT"));
+        assert!(actual.contains(&format!(
+            "field_timestamp,{},2",
+            api::tests::time_to_str(1_238_544_000_000)
+        )));
+        assert!(actual.contains(&format!(
+            "field_timestamp,{},1",
+            api::tests::time_to_str(1_238_544_060_000)
+        )));
+        assert!(actual.ends_with(""));
     }
 }

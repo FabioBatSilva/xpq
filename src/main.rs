@@ -4,6 +4,7 @@ extern crate either;
 extern crate parquet;
 extern crate quick_error;
 extern crate rand;
+extern crate regex;
 extern crate stats;
 extern crate tabwriter;
 extern crate unicode_width;

@@ -28,6 +28,11 @@ quick_error! {
             description("CSV error")
             from(e: csv::Error) -> (format!("{}", e))
         }
+        Filter(err: String) {
+            display("Filter error: {}", err)
+            description("Filter error")
+            from(e: regex::Error) -> (format!("{}", e))
+        }
         /// Invalid argument error.
         InvalidArgument(name: String) {
             display("Invalid argument: {}", name)
@@ -59,6 +64,7 @@ pub(in crate) mod tests {
         schema::parser::parse_message_type,
     };
 
+    #[derive(Debug)]
     pub struct SimpleMessage {
         pub field_int32: i32,
         pub field_int64: i64,
@@ -126,11 +132,37 @@ pub(in crate) mod tests {
         };
     }
 
-    pub fn write_simple_message_parquet(path: &Path, msg: &SimpleMessage) {
-        write_simple_messages_parquet(path, &[msg]);
+    pub fn create_simple_messages(num: usize) -> Vec<SimpleMessage> {
+        let iter = 1..=num;
+        let odd_even = |i| if i % 2 != 0 { "odd" } else { "even" };
+        let timestamp = |i| {
+            if i % 2 != 0 {
+                vec![0, 0, 2_454_923]
+            } else {
+                vec![4_165_425_152, 13, 2_454_923]
+            }
+        };
+        let repeat = |i: usize, n: usize| {
+            iter::repeat(i)
+                .map(|e| e.to_string())
+                .take(n)
+                .collect::<Vec<_>>()
+                .concat()
+        };
+
+        iter.map(|i| SimpleMessage {
+            field_int32: i as i32,
+            field_int64: repeat(i, 2).to_string().parse().unwrap(),
+            field_float: format!("{}.3", repeat(i, 3)).parse().unwrap(),
+            field_double: format!("{}.4", repeat(i, 4)).parse().unwrap(),
+            field_string: format!("{} {}", odd_even(i), repeat(i, 5)),
+            field_boolean: i % 2 == 0,
+            field_timestamp: timestamp(i),
+        })
+        .collect()
     }
 
-    pub fn write_simple_messages_parquet(path: &Path, vec: &[&SimpleMessage]) {
+    pub fn write_simple_messages_parquet(path: &Path, vec: &[SimpleMessage]) {
         let schema = Rc::new(parse_message_type(SIMPLE_MESSSAGE_SCHEMA).unwrap());
         let props = Rc::new(WriterProperties::builder().build());
         let file = fs::File::create(path).unwrap();
@@ -146,7 +178,7 @@ pub(in crate) mod tests {
     #[allow(clippy::borrowed_box)]
     fn write_simple_row_group(
         row_group_writer: &mut Box<RowGroupWriter>,
-        vec: &[&SimpleMessage],
+        vec: &[SimpleMessage],
     ) {
         write_next_col_writer!(row_group_writer, Int32ColumnWriter, vec, |m| {
             m.field_int32

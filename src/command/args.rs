@@ -1,6 +1,8 @@
 use crate::api::{Error, Result};
 use crate::output::OutputFormat;
 use clap::ArgMatches;
+use regex::Regex;
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::Path;
 use std::str;
@@ -33,6 +35,39 @@ pub fn string_values(matches: &ArgMatches, name: &str) -> Result<Option<Vec<Stri
         .or_else(|| Some(vec![]))
         .map(|vec| Some(vec).filter(|v| !v.is_empty()))
         .ok_or_else(|| Error::InvalidArgument(name.to_string()))
+}
+
+/// Gets all values of a specific argument.
+///
+/// If the option wasn't present `None` or `Some(crate::api::Error::InvalidArgument)` when
+/// invalid.
+pub fn filter_values(
+    matches: &ArgMatches,
+    name: &str,
+) -> Result<Option<HashMap<String, Regex>>> {
+    match matches.values_of(name) {
+        Some(values) => {
+            let mut result = HashMap::new();
+            let filters = values.map(String::from).collect::<Vec<_>>();
+
+            for entry in filters {
+                let filter = entry.as_str();
+                let parts = filter.splitn(2, ':').collect::<Vec<_>>();
+
+                if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
+                    return Err(Error::InvalidArgument(name.to_string()));
+                }
+
+                let field = String::from(parts[0]);
+                let regex = Regex::new(&parts[1])?;
+
+                result.insert(field, regex);
+            }
+
+            Ok(Some(result))
+        }
+        None => Ok(None),
+    }
 }
 
 /// Gets the value of a specific argument
@@ -78,6 +113,26 @@ pub fn validate_path(value: String) -> std::result::Result<(), String> {
         .ok_or_else(|| format!("Path '{}' does not exist", value))
 }
 
+pub fn validate_filter(value: String) -> std::result::Result<(), String> {
+    Some(value.clone())
+        .map(|s| {
+            s.splitn(2, ':')
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+        })
+        .filter(|s| s.len() == 2)
+        .filter(|s| !s[0].is_empty() && !s[1].is_empty())
+        .map(|s| Regex::new(&s[1]))
+        .filter(std::result::Result::is_ok)
+        .map(|_| ())
+        .ok_or_else(|| {
+            format!(
+                "Invalid filter expression. Expected '<column>:<regex>' got '{}'",
+                value
+            )
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,6 +161,44 @@ mod tests {
         assert_eq!(
             Err("invalid digit found in string".to_string()),
             validate_number(invalid)
+        );
+    }
+
+    #[test]
+    fn test_args_validate_filter() {
+        assert_eq!(Ok(()), validate_filter(String::from("foo:bar")));
+        assert_eq!(Ok(()), validate_filter(String::from("foo:^ns::[a-zA-Z]*$")));
+
+        assert_eq!(
+            Err(
+                "Invalid filter expression. Expected '<column>:<regex>' got 'NOT VALID'"
+                    .to_string()
+            ),
+            validate_filter(String::from("NOT VALID"))
+        );
+
+        assert_eq!(
+            Err(
+                "Invalid filter expression. Expected '<column>:<regex>' got 'foo'"
+                    .to_string()
+            ),
+            validate_filter(String::from("foo"))
+        );
+
+        assert_eq!(
+            Err(
+                "Invalid filter expression. Expected '<column>:<regex>' got 'bar:'"
+                    .to_string()
+            ),
+            validate_filter(String::from("bar:"))
+        );
+
+        assert_eq!(
+            Err(
+                "Invalid filter expression. Expected '<column>:<regex>' got ':bar'"
+                    .to_string()
+            ),
+            validate_filter(String::from(":bar"))
         );
     }
 
@@ -179,6 +272,62 @@ mod tests {
             ])),
             string_values(&result2, name)
         );
+    }
+
+    #[test]
+    fn test_args_filter_values() {
+        let name = "filters";
+
+        let missing_matches = create_mult_matches(name, &[name]);
+        let missing_result = filter_values(&missing_matches, name);
+
+        let simple_matches = create_mult_matches(name, &[name, "field:[a-z]"]);
+        let simple_result = filter_values(&simple_matches, name);
+
+        let url_matches = create_mult_matches(name, &[name, "url:^http://"]);
+        let url_result = filter_values(&url_matches, name);
+
+        let mult_matches = create_mult_matches(name, &[name, "a:A", "b:B"]);
+        let mult_result = filter_values(&mult_matches, name);
+
+        let regex_matches = create_mult_matches(name, &[name, "foo:^ns::[a-zA-Z]*$"]);
+        let regex_result = filter_values(&regex_matches, name);
+
+        assert!(missing_result.is_ok());
+        assert!(missing_result.as_ref().unwrap().is_none());
+
+        assert!(simple_result.is_ok());
+        assert!(simple_result.as_ref().unwrap().is_some());
+
+        assert!(url_result.is_ok());
+        assert!(url_result.as_ref().unwrap().is_some());
+
+        assert!(mult_result.is_ok());
+        assert!(mult_result.as_ref().unwrap().is_some());
+
+        assert!(regex_result.is_ok());
+        assert!(regex_result.as_ref().unwrap().is_some());
+
+        let simple_result_map = simple_result.unwrap().unwrap();
+        let regex_result_map = regex_result.unwrap().unwrap();
+        let mult_result_map = mult_result.unwrap().unwrap();
+        let url_result_map = url_result.unwrap().unwrap();
+
+        assert_eq!(1, simple_result_map.len());
+        assert_eq!("[a-z]", simple_result_map.get("field").unwrap().as_str());
+
+        assert_eq!(1, url_result_map.len());
+        assert_eq!("^http://", url_result_map.get("url").unwrap().as_str());
+
+        assert_eq!(1, regex_result_map.len());
+        assert_eq!(
+            "^ns::[a-zA-Z]*$",
+            regex_result_map.get("foo").unwrap().as_str()
+        );
+
+        assert_eq!(2, mult_result_map.len());
+        assert_eq!("A", mult_result_map.get("a").unwrap().as_str());
+        assert_eq!("B", mult_result_map.get("b").unwrap().as_str());
     }
 
     #[test]
