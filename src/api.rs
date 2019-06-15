@@ -177,7 +177,7 @@ pub(in crate) mod tests {
 
     #[allow(clippy::borrowed_box)]
     fn write_simple_row_group(
-        row_group_writer: &mut Box<RowGroupWriter>,
+        row_group_writer: &mut Box<dyn RowGroupWriter>,
         vec: &[SimpleMessage],
     ) {
         write_next_col_writer!(row_group_writer, Int32ColumnWriter, vec, |m| {
