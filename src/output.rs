@@ -66,7 +66,7 @@ fn format_row(
 }
 
 fn write_tabular<W: Write>(
-    values: &mut Iterator<Item = Result<Vec<String>>>,
+    values: &mut dyn Iterator<Item = Result<Vec<String>>>,
     config: &OutputConfig,
     headers: &[String],
     out: &mut W,
@@ -90,7 +90,7 @@ fn write_tabular<W: Write>(
 }
 
 fn write_vertical<W: Write>(
-    values: &mut Iterator<Item = Result<Vec<String>>>,
+    values: &mut dyn Iterator<Item = Result<Vec<String>>>,
     config: &OutputConfig,
     headers: &[String],
     out: &mut W,
@@ -119,7 +119,7 @@ fn write_vertical<W: Write>(
 }
 
 fn write_csv<W: Write>(
-    values: &mut Iterator<Item = Result<Vec<String>>>,
+    values: &mut dyn Iterator<Item = Result<Vec<String>>>,
     config: &OutputConfig,
     headers: &[String],
     out: &mut W,

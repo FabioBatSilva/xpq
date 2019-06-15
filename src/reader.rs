@@ -83,7 +83,7 @@ fn get_row_filters(
                 .map(|t| ((t.1).1.to_lowercase(), t.0))
                 .collect::<HashMap<_, _>>();
 
-            for (field, regex) in filter_map.into_iter() {
+            for (field, regex) in filter_map.iter() {
                 if let Some(index) = field_map.get(&field.to_lowercase()) {
                     result.insert(*index, regex.clone());
                 }
@@ -272,7 +272,7 @@ where
     }
 
     fn next_row(
-        iter: &mut Iterator<Item = Row>,
+        iter: &mut dyn Iterator<Item = Row>,
         fields: &[(usize, String)],
         filters: &Option<HashMap<usize, Regex>>,
     ) -> Option<Result<Vec<String>>> {
