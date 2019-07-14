@@ -31,6 +31,12 @@ chmod +x ./xpq-*-apple-darwin
 mv ./xpq-*-apple-darwin /usr/local/bin/xpq
 ```
 
+Alternatively, you can compile and install using [Cargo](https://crates.io/install) :
+
+```bash
+cargo install xpq
+```
+
 You can also compile from source using cargo
 
 ```bash
