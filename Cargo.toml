@@ -1,8 +1,8 @@
 [package]
 name = "xpq"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Fabio B. Silva <fabio.bat.silva@gmail.com>"]
-description = "Simple Parquet command line toolkit."
+description = "Simple command line tool for analyzing parquet files"
 documentation = "https://github.com/FabioBatSilva/xpq"
 repository = "https://github.com/FabioBatSilva/xpq"
 homepage = "https://github.com/FabioBatSilva/xpq"
@@ -11,18 +11,18 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
-csv = "1.0.7"
-rand = "0.6.5"
-regex = "1.1.6"
+csv = "1.1.1"
+rand = "0.7.0"
+regex = "1.1.9"
 clap = "2.33.0"
+parquet = "0.14"
 either = "1.5.2"
-walkdir = "2.2.7"
+walkdir = "2.2.8"
 tabwriter = "1.1.0"
 quick-error = "1.2.2"
 unicode-width = "0.1.5"
 streaming-stats = "0.2"
-parquet = { git = "https://github.com/apache/arrow", rev = "445482e" }
 
 [dev-dependencies]
-tempfile = "3.0.7"
-chrono = "0.4.6"
+tempfile = "3.1.0"
+chrono = "0.4.7"
