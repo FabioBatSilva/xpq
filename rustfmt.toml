@@ -1,6 +1,5 @@
 max_width = 90
 wrap_comments = true
 format_strings = false
-format_doc_comments = true
 trailing_semicolon = true
 comment_width = 90
