@@ -1,6 +1,6 @@
 [package]
 name = "xpq"
-version = "0.1.2"
+version = "1.0.0"
 edition = "2018"
 authors = ["Fabio B. Silva <fabio.bat.silva@gmail.com>"]
 description = "Simple command line tool for analyzing parquet files"
