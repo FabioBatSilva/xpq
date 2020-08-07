@@ -1,4 +1,4 @@
-pub(in command) mod args;
+pub(in crate::command) mod args;
 
 pub mod count;
 pub mod frequency;

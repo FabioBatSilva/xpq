@@ -1,7 +1,7 @@
 use crate::command::args;
 use crate::output::{OutputFormat, OutputWriter};
 use crate::reader::ParquetFile;
-use api::Result;
+use crate::api::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::io::Write;
 

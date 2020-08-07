@@ -1,12 +1,12 @@
-use api::Error;
-use api::Result;
+use crate::api::Error;
+use crate::api::Result;
 use either::Either;
-use parquet::file::metadata::ParquetMetaDataPtr;
 use parquet::file::reader::FileReader;
 use parquet::file::reader::SerializedFileReader;
 use parquet::record::reader::RowIter;
 use parquet::record::Row;
 use parquet::record::RowFormatter;
+use parquet::schema::types::Type;
 use regex::Regex;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -155,11 +155,11 @@ impl ParquetFile {
             .unwrap_or_else(|| Err(Error::from(self.path.to_path_buf())))
     }
 
-    pub fn metadata(&self) -> Result<ParquetMetaDataPtr> {
+    pub fn schema(&self) -> Result<Type> {
         self.files()
             .nth(0)
             .map(|p| create_parquet_reader(p.as_path()))
-            .map(|r| Ok(r?.metadata()))
+            .map(|r| Ok(r?.metadata().file_metadata().schema().clone()))
             .unwrap_or_else(|| Err(Error::from(self.path.to_path_buf())))
     }
 

@@ -1,15 +1,3 @@
-extern crate clap;
-extern crate csv;
-extern crate either;
-extern crate parquet;
-extern crate quick_error;
-extern crate rand;
-extern crate regex;
-extern crate stats;
-extern crate tabwriter;
-extern crate unicode_width;
-extern crate walkdir;
-
 use clap::{App, AppSettings, ArgMatches};
 use std::process;
 
