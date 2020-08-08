@@ -99,7 +99,7 @@ fn write_vertical<W: Write>(
     let mut writer = TabWriter::new(out).minwidth(config.minwidth);
 
     for (i, row) in values.enumerate() {
-        writer.write_all("\n".as_bytes())?;
+        writer.write_all(b"\n")?;
 
         for (h, cell) in row?.into_iter().enumerate() {
             let header = headers[h].to_string();

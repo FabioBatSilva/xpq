@@ -144,7 +144,7 @@ impl ParquetFile {
 
     pub fn field_names(&self) -> Result<Vec<String>> {
         self.files()
-            .nth(0)
+            .next()
             .map(|p| create_parquet_reader(p.as_path()))
             .map(|r| {
                 let fields = get_row_fields(&r?, &self.fields);
@@ -157,7 +157,7 @@ impl ParquetFile {
 
     pub fn schema(&self) -> Result<Type> {
         self.files()
-            .nth(0)
+            .next()
             .map(|p| create_parquet_reader(p.as_path()))
             .map(|r| Ok(r?.metadata().file_metadata().schema().clone()))
             .unwrap_or_else(|| Err(Error::from(self.path.to_path_buf())))
