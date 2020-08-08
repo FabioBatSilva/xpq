@@ -525,7 +525,7 @@ mod tests {
         writer.write(&mut buff).unwrap();
 
         let buff_vec = buff.into_inner();
-        let actual = str::from_utf8(&buff_vec).unwrap();;
+        let actual = str::from_utf8(&buff_vec).unwrap();
 
         // header + (values ...) + end line
         assert_eq!(1002, actual.split('\n').count());

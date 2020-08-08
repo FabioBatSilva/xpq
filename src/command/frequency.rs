@@ -1,7 +1,7 @@
+use crate::api::Result;
 use crate::command::args;
 use crate::output::{OutputFormat, OutputWriter};
 use crate::reader::ParquetFile;
-use crate::api::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use stats::Frequencies;
 use std::io::Write;
@@ -122,7 +122,7 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use api;
+    use crate::api;
     use std::io::Cursor;
     use std::str;
 

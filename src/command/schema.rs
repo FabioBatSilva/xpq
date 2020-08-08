@@ -1,7 +1,7 @@
-use crate::reader::ParquetFile;
 use crate::api::Result;
-use clap::{App, Arg, ArgMatches, SubCommand};
 use crate::command::args;
+use crate::reader::ParquetFile;
+use clap::{App, Arg, ArgMatches, SubCommand};
 use parquet::schema::printer::print_schema;
 use std::io::Write;
 
@@ -40,7 +40,7 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use api;
+    use crate::api;
     use std::io::Cursor;
     use std::str;
 

@@ -310,7 +310,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use api;
+    use crate::api;
     use api::tests::time_to_str;
     use std::fs::File;
 
@@ -556,9 +556,9 @@ mod tests {
         let parquet_ok = ParquetFile::from(path1.as_path());
         let parquet_err = ParquetFile::from(path2.as_path());
         let parquet_empty = ParquetFile::from(empty.path());
-        let result_empty = parquet_empty.metadata();
-        let result_err = parquet_err.metadata();
-        let result_ok = parquet_ok.metadata();
+        let result_empty = parquet_empty.schema();
+        let result_err = parquet_err.schema();
+        let result_ok = parquet_ok.schema();
 
         assert_eq!(result_ok.is_ok(), true);
         assert_eq!(result_err.is_err(), true);

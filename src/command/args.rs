@@ -136,7 +136,7 @@ pub fn validate_filter(value: String) -> std::result::Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use api;
+    use crate::api;
     use clap::{App, Arg};
 
     #[test]
