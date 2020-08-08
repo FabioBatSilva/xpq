@@ -371,13 +371,13 @@ mod tests {
         assert_eq!(dir_vec, vec![path1.clone(), path2.clone()]);
 
         assert_eq!(file1_vec.len(), 1);
-        assert_eq!(file1_vec, vec![path1.clone()]);
+        assert_eq!(file1_vec, vec![path1]);
 
         assert_eq!(file2_vec.len(), 1);
-        assert_eq!(file2_vec, vec![path2.clone()]);
+        assert_eq!(file2_vec, vec![path2]);
 
         assert_eq!(file3_vec.len(), 1);
-        assert_eq!(file3_vec, vec![path3.clone()]);
+        assert_eq!(file3_vec, vec![path3]);
     }
 
     #[test]
@@ -692,7 +692,7 @@ mod tests {
         assert_eq!(
             result[0],
             Err(Error::Parquet(
-                path.to_path_buf(),
+                path,
                 parquet::errors::ParquetError::General(String::from(
                     "Invalid Parquet file. Size is smaller than footer"
                 ))
