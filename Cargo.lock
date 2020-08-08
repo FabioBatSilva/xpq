@@ -1543,7 +1543,7 @@ dependencies = [
 
 [[package]]
 name = "xpq"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "chrono 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.33.2 (registry+https://github.com/rust-lang/crates.io-index)",
