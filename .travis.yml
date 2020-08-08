@@ -33,7 +33,7 @@ script:
 - RUST_BACKTRACE=full cross test --target $TARGET
 
 before_deploy:
-- cross rustc --target $TARGET --release -- -C lto
+- cross rustc --target $TARGET --release
 - cp target/$TARGET/release/xpq target/$CRATE_NAME-$TRAVIS_TAG-$TARGET
 
 deploy:
