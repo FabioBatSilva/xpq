@@ -1,12 +1,12 @@
-use api::Error;
-use api::Result;
+use crate::api::Error;
+use crate::api::Result;
 use either::Either;
-use parquet::file::metadata::ParquetMetaDataPtr;
 use parquet::file::reader::FileReader;
 use parquet::file::reader::SerializedFileReader;
 use parquet::record::reader::RowIter;
 use parquet::record::Row;
 use parquet::record::RowFormatter;
+use parquet::schema::types::Type;
 use regex::Regex;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -144,7 +144,7 @@ impl ParquetFile {
 
     pub fn field_names(&self) -> Result<Vec<String>> {
         self.files()
-            .nth(0)
+            .next()
             .map(|p| create_parquet_reader(p.as_path()))
             .map(|r| {
                 let fields = get_row_fields(&r?, &self.fields);
@@ -155,11 +155,11 @@ impl ParquetFile {
             .unwrap_or_else(|| Err(Error::from(self.path.to_path_buf())))
     }
 
-    pub fn metadata(&self) -> Result<ParquetMetaDataPtr> {
+    pub fn schema(&self) -> Result<Type> {
         self.files()
-            .nth(0)
+            .next()
             .map(|p| create_parquet_reader(p.as_path()))
-            .map(|r| Ok(r?.metadata()))
+            .map(|r| Ok(r?.metadata().file_metadata().schema().clone()))
             .unwrap_or_else(|| Err(Error::from(self.path.to_path_buf())))
     }
 
@@ -310,7 +310,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use api;
+    use crate::api;
     use api::tests::time_to_str;
     use std::fs::File;
 
@@ -556,9 +556,9 @@ mod tests {
         let parquet_ok = ParquetFile::from(path1.as_path());
         let parquet_err = ParquetFile::from(path2.as_path());
         let parquet_empty = ParquetFile::from(empty.path());
-        let result_empty = parquet_empty.metadata();
-        let result_err = parquet_err.metadata();
-        let result_ok = parquet_ok.metadata();
+        let result_empty = parquet_empty.schema();
+        let result_err = parquet_err.schema();
+        let result_ok = parquet_ok.schema();
 
         assert_eq!(result_ok.is_ok(), true);
         assert_eq!(result_err.is_err(), true);

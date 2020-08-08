@@ -99,7 +99,7 @@ fn write_vertical<W: Write>(
     let mut writer = TabWriter::new(out).minwidth(config.minwidth);
 
     for (i, row) in values.enumerate() {
-        writer.write_all("\n".as_bytes())?;
+        writer.write_all(b"\n")?;
 
         for (h, cell) in row?.into_iter().enumerate() {
             let header = headers[h].to_string();
@@ -525,7 +525,7 @@ mod tests {
         writer.write(&mut buff).unwrap();
 
         let buff_vec = buff.into_inner();
-        let actual = str::from_utf8(&buff_vec).unwrap();;
+        let actual = str::from_utf8(&buff_vec).unwrap();
 
         // header + (values ...) + end line
         assert_eq!(1002, actual.split('\n').count());

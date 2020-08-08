@@ -1,7 +1,7 @@
+use crate::api::Result;
 use crate::command::args;
 use crate::output::{OutputFormat, OutputWriter};
 use crate::reader::ParquetFile;
-use api::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -77,7 +77,7 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use api;
+    use crate::api;
     use api::tests::time_to_str;
     use std::io::Cursor;
     use std::str;
