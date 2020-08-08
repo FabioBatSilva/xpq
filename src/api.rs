@@ -152,7 +152,7 @@ pub(in crate) mod tests {
 
         iter.map(|i| SimpleMessage {
             field_int32: i as i32,
-            field_int64: repeat(i, 2).to_string().parse().unwrap(),
+            field_int64: repeat(i, 2).parse().unwrap(),
             field_float: format!("{}.3", repeat(i, 3)).parse().unwrap(),
             field_double: format!("{}.4", repeat(i, 4)).parse().unwrap(),
             field_string: format!("{} {}", odd_even(i), repeat(i, 5)),

@@ -28,8 +28,6 @@ pub fn def() -> App<'static, 'static> {
 pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
     let path = args::path_value(matches, "path")?;
     let parquet = ParquetFile::from(path);
-    // let metadata = parquet.metadata()?;
-    // let file_meta = metadata.file_metadata();
     let schema = parquet.schema()?;
 
     print_schema(out, &schema);
