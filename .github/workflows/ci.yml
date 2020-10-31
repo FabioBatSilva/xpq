@@ -1,0 +1,180 @@
+name: ci
+
+env:
+  RUST_TOOLCHAIN: nightly-2020-07-27
+  RUST_BACKTRACE: full
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - "*"
+
+jobs:
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: env
+        run: env
+      -
+        name: checkout
+        uses: actions/checkout@v2
+      -
+        name: cache-cargo
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      -
+        name: toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt, clippy
+          override: true
+      -
+        name: fmt
+        run: cargo fmt --all -- --check
+      -
+        name: clippy
+        run: |
+          rustup component add clippy
+          cargo clippy --all-targets --all-features -- -D warnings
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: checkout
+        uses: actions/checkout@v2
+      -
+        name: cache-cargo
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      -
+        name: toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+      -
+        name: cargo-test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose
+
+  build:
+    needs: [lint, test]
+    name: build ${{ matrix.artifact }}
+    strategy:
+      fail-fast: false
+      matrix:
+        artifact: [xpq-x86_64-linux-gnu, xpq-x86_64-pc-windows.exe, xpq-x86_64-apple-darwin]
+        include:
+          -
+            target: x86_64-unknown-linux-gnu
+            artifact: xpq-x86_64-linux-gnu
+            os: ubuntu-18.04
+            bin: xpq
+          -
+            target: x86_64-pc-windows-gnu
+            artifact: xpq-x86_64-pc-windows.exe
+            packages: gcc-mingw-w64
+            os: ubuntu-18.04
+            bin: xpq.exe
+          -
+            target: x86_64-apple-darwin
+            artifact: xpq-x86_64-apple-darwin
+            os: macos-10.15
+            bin: xpq
+    runs-on: ${{ matrix.os }}
+    steps:
+      -
+        name: checkout
+        uses: actions/checkout@v2
+      -
+        name: echo
+        run: echo OS=${{ matrix.os }} TARGET=${{ matrix.target }} BIN=${{ matrix.bin }} ARTIFACT=${{ matrix.artifact }}
+      -
+        name: packages
+        if: matrix.package
+        run: |
+            sudo apt-get update && sudo apt-get install -qq ${{ matrix.packages }};
+      -
+        name: cargo-test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          use-cross: true
+          args: --target ${{ matrix.target }} --verbose
+      -
+        name: cargo-build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          use-cross: true
+          args: --release --target ${{ matrix.target }} --verbose
+      -
+        name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.artifact }}
+          path: ./target/${{ matrix.target }}/release/${{ matrix.bin }}
+
+  release:
+    name: release
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      -
+        name: download-artifacts
+        uses: actions/download-artifact@v2
+      -
+        id: create_release
+        name: create-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          prerelease: true
+          draft: true
+
+      -
+        name: upload-xpq-x86_64-linux-gnu
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: xpq-x86_64-linux-gnu
+          asset_name: xpq-x86_64-linux-gnu
+          asset_content_type: "application/octet-stream"
+      -
+        name: upload-xpq-x86_64-pc-windows
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: xpq-x86_64-pc-windows.exe
+          asset_name: xpq-x86_64-pc-windows.exe
+          asset_content_type: "application/vnd.microsoft.portable-executable"
+      -
+        name: upload-xpq-x86_64-apple-darwin
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: xpq-x86_64-apple-darwin
+          asset_name: xpq-x86_64-apple-darwin
+          asset_content_type: "application/octet-stream"
