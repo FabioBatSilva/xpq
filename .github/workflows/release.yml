@@ -23,7 +23,6 @@ jobs:
           -
             target: x86_64-pc-windows-gnu
             artifact: xpq-x86_64-pc-windows.exe
-            packages: gcc-mingw-w64
             os: ubuntu-18.04
             bin: xpq.exe
           -
@@ -65,3 +64,33 @@ jobs:
           asset_path: ./target/${{ matrix.target }}/release/${{ matrix.bin }}
           asset_content_type: application/octet-stream
           asset_name: ${{ matrix.artifact }}
+
+  publish:
+    name: cargo publish
+    runs-on: ubuntu-18.04
+    needs: [release]
+    env:
+      CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+    steps:
+      -
+        name: checkout
+        uses: actions/checkout@v2
+      -
+        name: toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+      -
+        name: cargo-publish-dry-run
+        uses: actions-rs/cargo@v1
+        with:
+          command: publish
+          args: --dry-run --allow-dirty --token $CARGO_TOKEN
+      -
+        name: cargo-publish-push
+        uses: actions-rs/cargo@v1
+        if: "!github.event.release.prerelease"
+        with:
+          command: publish
+          args: --allow-dirty --token $CARGO_TOKEN

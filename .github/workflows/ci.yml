@@ -82,7 +82,6 @@ jobs:
           -
             target: x86_64-pc-windows-gnu
             artifact: xpq-x86_64-pc-windows.exe
-            packages: gcc-mingw-w64
             os: ubuntu-18.04
             bin: xpq.exe
           -
@@ -95,11 +94,6 @@ jobs:
       -
         name: checkout
         uses: actions/checkout@v2
-      -
-        name: packages
-        if: matrix.package
-        run: |
-            sudo apt-get update && sudo apt-get install -qq ${{ matrix.packages }};
       -
         name: cargo-test
         uses: actions-rs/cargo@v1
