@@ -1,7 +1,7 @@
 # xpq
 xpq is a simple command line program for analyzing parquet files.
 
-[![Build Status](https://travis-ci.org/FabioBatSilva/xpq.svg?branch=master)](https://travis-ci.org/FabioBatSilva/xpq)
+![Build Status](https://github.com/FabioBatSilva/xpq/workflows/ci/badge.svg?branch=master)
 
 
 ## Requirements
