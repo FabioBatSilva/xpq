@@ -69,8 +69,6 @@ jobs:
     name: cargo publish
     runs-on: ubuntu-18.04
     needs: [release]
-    env:
-      CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
     steps:
       -
         name: checkout
@@ -82,15 +80,22 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           override: true
       -
-        name: cargo-publish-dry-run
+        name: cargo-login
         uses: actions-rs/cargo@v1
         with:
-          command: publish
-          args: --dry-run --allow-dirty --token $CARGO_TOKEN
+          command: login
+          args: ${{ secrets.CARGO_TOKEN }}
       -
-        name: cargo-publish-push
+        name: cargo-publish-dry-run
+        uses: actions-rs/cargo@v1
+        if: "github.event.release.prerelease"
+        with:
+          command: publish
+          args: --allow-dirty --dry-run
+      -
+        name: cargo-publish-release
         uses: actions-rs/cargo@v1
         if: "!github.event.release.prerelease"
         with:
           command: publish
-          args: --allow-dirty --token $CARGO_TOKEN
+          args: --allow-dirty
