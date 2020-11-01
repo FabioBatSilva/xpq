@@ -1,0 +1,96 @@
+name: release
+
+env:
+  RUST_TOOLCHAIN: nightly-2020-07-27
+  RUST_BACKTRACE: full
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  release:
+    name: release ${{ matrix.artifact }}
+    strategy:
+      matrix:
+        artifact: [xpq-x86_64-linux-gnu, xpq-x86_64-pc-windows.exe, xpq-x86_64-apple-darwin]
+        include:
+          -
+            target: x86_64-unknown-linux-gnu
+            artifact: xpq-x86_64-linux-gnu
+            os: ubuntu-18.04
+            bin: xpq
+          -
+            target: x86_64-pc-windows-gnu
+            artifact: xpq-x86_64-pc-windows.exe
+            os: ubuntu-18.04
+            bin: xpq.exe
+          -
+            target: x86_64-apple-darwin
+            artifact: xpq-x86_64-apple-darwin
+            os: macos-10.15
+            bin: xpq
+    runs-on: ${{ matrix.os }}
+    steps:
+      -
+        name: checkout
+        uses: actions/checkout@v2
+      -
+        id: get_release
+        name: get-release
+        uses: bruceadams/get-release@v1.2.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      -
+        name: cargo-build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          use-cross: true
+          args: --release --target ${{ matrix.target }} --verbose
+      -
+        name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.artifact }}
+          path: ./target/${{ matrix.target }}/release/${{ matrix.bin }}
+      -
+        name: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./target/${{ matrix.target }}/release/${{ matrix.bin }}
+          asset_content_type: application/octet-stream
+          asset_name: ${{ matrix.artifact }}
+
+  publish:
+    name: cargo publish
+    runs-on: ubuntu-18.04
+    needs: [release]
+    env:
+      CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+    steps:
+      -
+        name: checkout
+        uses: actions/checkout@v2
+      -
+        name: toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+      -
+        name: cargo-publish-dry-run
+        uses: actions-rs/cargo@v1
+        with:
+          command: publish
+          args: --dry-run --allow-dirty --token $CARGO_TOKEN
+      -
+        name: cargo-publish-push
+        uses: actions-rs/cargo@v1
+        if: "!github.event.release.prerelease"
+        with:
+          command: publish
+          args: --allow-dirty --token $CARGO_TOKEN
