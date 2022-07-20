@@ -55,7 +55,7 @@ fn format_row(
                 return e.1.to_owned();
             }
 
-            format_cell(&e.1, width[e.0])
+            format_cell(e.1, width[e.0])
         })
         .collect::<Vec<_>>()
         .join("\t");
@@ -154,12 +154,15 @@ pub enum OutputFormat {
     Vertical,
 
     // CSV format
-    CSV,
+    Csv,
 }
 
+const OUTPUT_FORMAT_VALUES: &[&str] =
+    &["t", "table", "tabular", "v", "vertical", "c", "csv"];
+
 impl OutputFormat {
-    pub fn values() -> Vec<&'static str> {
-        vec!["t", "table", "tabular", "v", "vertical", "c", "csv"]
+    pub fn values() -> &'static [&'static str] {
+        OUTPUT_FORMAT_VALUES
     }
 }
 
@@ -168,7 +171,7 @@ impl TryFrom<String> for OutputFormat {
 
     fn try_from(value: String) -> Result<Self> {
         match value.to_lowercase().as_ref() {
-            "csv" | "c" => Ok(OutputFormat::CSV),
+            "csv" | "c" => Ok(OutputFormat::Csv),
             "vertical" | "v" => Ok(OutputFormat::Vertical),
             "tabular" | "table" | "t" => Ok(OutputFormat::Tabular),
             _ => Err(Error::InvalidArgument(value)),
@@ -238,7 +241,7 @@ where
             OutputFormat::Vertical => {
                 write_vertical(&mut self.values, &self.config, &self.headers, out)?;
             }
-            OutputFormat::CSV => {
+            OutputFormat::Csv => {
                 write_csv(&mut self.values, &self.config, &self.headers, out)?;
             }
         }

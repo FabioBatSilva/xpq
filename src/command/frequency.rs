@@ -49,7 +49,7 @@ fn format_rows(
         })
 }
 
-pub fn def() -> App<'static, 'static> {
+pub fn def() -> App<'static> {
     SubCommand::with_name("frequency")
         .about("Show frequency counts for each column/value")
         .arg(
@@ -58,7 +58,7 @@ pub fn def() -> App<'static, 'static> {
                 .takes_value(true)
                 .long("columns")
                 .multiple(true)
-                .short("c"),
+                .short('c'),
         )
         .arg(
             Arg::with_name("search")
@@ -67,7 +67,7 @@ pub fn def() -> App<'static, 'static> {
                 .takes_value(true)
                 .long("search")
                 .multiple(true)
-                .short("s"),
+                .short('s'),
         )
         .arg(
             Arg::with_name("limit")
@@ -75,15 +75,15 @@ pub fn def() -> App<'static, 'static> {
                 .help("Max number of rows")
                 .default_value("500")
                 .long("limit")
-                .short("l"),
+                .short('l'),
         )
         .arg(
             Arg::with_name("format")
                 .help("Output format")
-                .possible_values(&OutputFormat::values())
+                .possible_values(OutputFormat::values())
                 .default_value("table")
                 .long("format")
-                .short("f"),
+                .short('f'),
         )
         .arg(
             Arg::with_name("path")

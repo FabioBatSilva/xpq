@@ -12,10 +12,10 @@ use std::str;
 ///
 /// If the option wasn't present or is invalid returns
 /// `crate::api::Error::InvalidArgument`.
-pub fn path_value<'a>(matches: &'a ArgMatches<'a>, name: &str) -> Result<&'a Path> {
+pub fn path_value<'a>(matches: &'a ArgMatches, name: &str) -> Result<&'a Path> {
     matches
         .value_of(name)
-        .map(|p| Path::new(p))
+        .map(Path::new)
         .filter(|p| p.exists())
         .ok_or_else(|| Error::InvalidArgument(name.to_string()))
 }
@@ -59,7 +59,7 @@ pub fn filter_values(
                 }
 
                 let field = String::from(parts[0]);
-                let regex = Regex::new(&parts[1])?;
+                let regex = Regex::new(parts[1])?;
 
                 result.insert(field, regex);
             }
@@ -99,22 +99,22 @@ pub fn output_format_value(matches: &ArgMatches, name: &str) -> Result<OutputFor
         .ok_or_else(|| Error::InvalidArgument(name.to_string()))
 }
 
-pub fn validate_number(value: String) -> std::result::Result<(), String> {
+pub fn validate_number(value: &str) -> std::result::Result<(), String> {
     value
         .parse::<usize>()
         .map(|_| ())
         .map_err(|err| err.to_string())
 }
 
-pub fn validate_path(value: String) -> std::result::Result<(), String> {
+pub fn validate_path(value: &str) -> std::result::Result<(), String> {
     Some(Path::new(&value))
         .filter(|p| p.exists())
         .map(|_| ())
         .ok_or_else(|| format!("Path '{}' does not exist", value))
 }
 
-pub fn validate_filter(value: String) -> std::result::Result<(), String> {
-    Some(value.clone())
+pub fn validate_filter(value: &str) -> std::result::Result<(), String> {
+    Some(value)
         .map(|s| {
             s.splitn(2, ':')
                 .map(ToString::to_string)
@@ -142,8 +142,8 @@ mod tests {
     #[test]
     fn test_args_validate_path() {
         let tmp = api::tests::temp_file("tmp", ".file");
-        let valid = String::from(tmp.path().to_string_lossy());
-        let invalid = String::from("NOT VALID");
+        let valid = String::from(tmp.path().to_string_lossy()).as_str();
+        let invalid = String::from("NOT VALID").as_str();
 
         assert_eq!(Ok(()), validate_path(valid));
         assert_eq!(
@@ -154,8 +154,8 @@ mod tests {
 
     #[test]
     fn test_args_validate_number() {
-        let valid = String::from("123");
-        let invalid = String::from("NOT VALID");
+        let valid = "123";
+        let invalid = "NOT VALID";
 
         assert_eq!(Ok(()), validate_number(valid));
         assert_eq!(
@@ -166,15 +166,15 @@ mod tests {
 
     #[test]
     fn test_args_validate_filter() {
-        assert_eq!(Ok(()), validate_filter(String::from("foo:bar")));
-        assert_eq!(Ok(()), validate_filter(String::from("foo:^ns::[a-zA-Z]*$")));
+        assert_eq!(Ok(()), validate_filter("foo:bar"));
+        assert_eq!(Ok(()), validate_filter("foo:^ns::[a-zA-Z]*$"));
 
         assert_eq!(
             Err(
                 "Invalid filter expression. Expected '<column>:<regex>' got 'NOT VALID'"
                     .to_string()
             ),
-            validate_filter(String::from("NOT VALID"))
+            validate_filter("NOT VALID")
         );
 
         assert_eq!(
@@ -182,7 +182,7 @@ mod tests {
                 "Invalid filter expression. Expected '<column>:<regex>' got 'foo'"
                     .to_string()
             ),
-            validate_filter(String::from("foo"))
+            validate_filter("foo")
         );
 
         assert_eq!(
@@ -190,7 +190,7 @@ mod tests {
                 "Invalid filter expression. Expected '<column>:<regex>' got 'bar:'"
                     .to_string()
             ),
-            validate_filter(String::from("bar:"))
+            validate_filter("bar:")
         );
 
         assert_eq!(
@@ -198,7 +198,7 @@ mod tests {
                 "Invalid filter expression. Expected '<column>:<regex>' got ':bar'"
                     .to_string()
             ),
-            validate_filter(String::from(":bar"))
+            validate_filter(":bar")
         );
     }
 

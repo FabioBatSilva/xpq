@@ -5,16 +5,16 @@ use crate::reader::ParquetFile;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::io::Write;
 
-pub fn def() -> App<'static, 'static> {
+pub fn def() -> App<'static> {
     SubCommand::with_name("count")
         .about("Show num of rows")
         .arg(
             Arg::with_name("format")
                 .help("Output format")
-                .possible_values(&OutputFormat::values())
+                .possible_values(OutputFormat::values())
                 .default_value("table")
                 .long("format")
-                .short("f"),
+                .short('f'),
         )
         .arg(
             Arg::with_name("path")

@@ -5,7 +5,7 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use parquet::schema::printer::print_schema;
 use std::io::Write;
 
-pub fn def() -> App<'static, 'static> {
+pub fn def() -> App<'static> {
     SubCommand::with_name("schema")
         .about("Show parquet schema")
         .arg(
@@ -14,7 +14,7 @@ pub fn def() -> App<'static, 'static> {
                 .possible_values(&["hive"])
                 .default_value("hive")
                 .long("format")
-                .short("f"),
+                .short('f'),
         )
         .arg(
             Arg::with_name("path")

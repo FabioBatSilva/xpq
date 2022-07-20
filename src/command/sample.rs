@@ -8,7 +8,7 @@ use rand::thread_rng;
 use std::collections::HashSet;
 use std::io::Write;
 
-pub fn def() -> App<'static, 'static> {
+pub fn def() -> App<'static> {
     SubCommand::with_name("sample")
         .about("Randomly sample rows from parquet")
         .arg(
@@ -17,7 +17,7 @@ pub fn def() -> App<'static, 'static> {
                 .takes_value(true)
                 .long("columns")
                 .multiple(true)
-                .short("c"),
+                .short('c'),
         )
         .arg(
             Arg::with_name("sample")
@@ -25,15 +25,15 @@ pub fn def() -> App<'static, 'static> {
                 .help("Sample size limit")
                 .default_value("100")
                 .long("sample")
-                .short("s"),
+                .short('s'),
         )
         .arg(
             Arg::with_name("format")
                 .help("Output format")
-                .possible_values(&OutputFormat::values())
+                .possible_values(OutputFormat::values())
                 .default_value("table")
                 .long("format")
-                .short("f"),
+                .short('f'),
         )
         .arg(
             Arg::with_name("path")
