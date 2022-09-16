@@ -78,7 +78,6 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
 mod tests {
     use super::*;
     use crate::api;
-    use api::tests::time_to_str;
     use std::io::Cursor;
     use std::str;
 
@@ -88,8 +87,8 @@ mod tests {
         let parquet = api::tests::temp_file("msg", ".parquet");
         let expected = vec![
             "field_int32  field_int64  field_float  field_double  field_string  field_boolean  field_timestamp",
-            &format!("1            11           111.3        1111.4        \"odd 11111\"   false          {}", time_to_str(1_238_544_000_000)),
-            &format!("2            22           222.3        2222.4        \"even 22222\"  true           {}", time_to_str(1_238_544_060_000)),
+            "1            11           111.3        1111.4        \"odd 11111\"   false          2011-01-01 00:00:00 +00:00",
+            "2            22           222.3        2222.4        \"even 22222\"  true           2012-01-01 00:00:00 +00:00",
             ""
         ]
         .join("\n");
@@ -183,8 +182,8 @@ mod tests {
         let path_str = parquet.path().to_str().unwrap();
         let expected = vec![
             "field_int32,field_timestamp",
-            &format!("1,{}", time_to_str(1_238_544_000_000)),
-            &format!("2,{}", time_to_str(1_238_544_060_000)),
+            "1,2011-01-01 00:00:00 +00:00",
+            "2,2012-01-01 00:00:00 +00:00",
             "",
         ]
         .join("\n");

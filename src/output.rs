@@ -393,12 +393,12 @@ mod tests {
 
         assert_eq!(
             OutputFormat::try_from(String::from("c"))?,
-            OutputFormat::CSV
+            OutputFormat::Csv
         );
 
         assert_eq!(
             OutputFormat::try_from(String::from("CSV"))?,
-            OutputFormat::CSV
+            OutputFormat::Csv
         );
 
         assert_eq!(
@@ -483,7 +483,7 @@ mod tests {
         ];
 
         let iter = values.into_iter();
-        let mut writer = OutputWriter::new(headers, iter).format(OutputFormat::CSV);
+        let mut writer = OutputWriter::new(headers, iter).format(OutputFormat::Csv);
 
         writer.write(&mut buff).unwrap();
 

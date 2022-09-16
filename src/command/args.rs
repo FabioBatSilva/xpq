@@ -142,8 +142,8 @@ mod tests {
     #[test]
     fn test_args_validate_path() {
         let tmp = api::tests::temp_file("tmp", ".file");
-        let valid = String::from(tmp.path().to_string_lossy()).as_str();
-        let invalid = String::from("NOT VALID").as_str();
+        let valid = tmp.path().to_str().unwrap();
+        let invalid = "NOT VALID";
 
         assert_eq!(Ok(()), validate_path(valid));
         assert_eq!(
@@ -345,14 +345,14 @@ mod tests {
         );
     }
 
-    fn create_matches<'a>(name: &'a str, value: &'a str) -> ArgMatches<'a> {
+    fn create_matches<'a>(name: &'a str, value: &'a str) -> ArgMatches {
         App::new(name)
             .arg(Arg::with_name(name).index(1).required(true))
             .get_matches_from_safe(vec![name, value])
             .unwrap()
     }
 
-    fn create_mult_matches<'a>(name: &'a str, values: &[&str]) -> ArgMatches<'a> {
+    fn create_mult_matches<'a>(name: &'a str, values: &[&str]) -> ArgMatches {
         App::new(name)
             .arg(Arg::with_name(name).index(1).required(false).multiple(true))
             .get_matches_from_safe(values)

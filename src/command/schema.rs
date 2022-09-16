@@ -47,14 +47,14 @@ mod tests {
         let mut output = Cursor::new(Vec::new());
         let parquet = api::tests::temp_file("msg", "parquet");
         let expected = vec![
-            "message simple_message {",
-            "  OPTIONAL INT32 field_int32;",
-            "  OPTIONAL INT64 field_int64;",
-            "  OPTIONAL FLOAT field_float;",
-            "  OPTIONAL DOUBLE field_double;",
-            "  OPTIONAL BYTE_ARRAY field_string (UTF8);",
-            "  OPTIONAL BOOLEAN field_boolean;",
-            "  OPTIONAL INT96 field_timestamp;",
+            "message rust_schema {",
+            "  REQUIRED INT32 field_int32;",
+            "  REQUIRED INT64 field_int64;",
+            "  REQUIRED FLOAT field_float;",
+            "  REQUIRED DOUBLE field_double;",
+            "  REQUIRED BYTE_ARRAY field_string (STRING);",
+            "  REQUIRED BOOLEAN field_boolean;",
+            "  REQUIRED INT64 field_timestamp (TIMESTAMP_MILLIS);",
             "}",
             "",
         ]

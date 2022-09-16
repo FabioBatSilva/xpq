@@ -121,6 +121,8 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use chrono::NaiveDate;
+
     use super::*;
     use crate::api;
     use std::io::Cursor;
@@ -242,10 +244,38 @@ mod tests {
         let parquet = api::tests::temp_file("msg", ".parquet");
         let path_str = parquet.path().to_str().unwrap();
         let path = parquet.path();
+        let msgs = vec![
+            api::tests::SimpleMessage {
+                field_int32: 1,
+                field_int64: 11,
+                field_float: 1.11,
+                field_double: 1.111,
+                field_boolean: true,
+                field_string: "odd".to_string(),
+                field_timestamp: NaiveDate::from_ymd(2001, 9, 9).and_hms(1, 46, 40),
+            },
+            api::tests::SimpleMessage {
+                field_int32: 2,
+                field_int64: 22,
+                field_float: 2.22,
+                field_double: 2.222,
+                field_boolean: true,
+                field_string: "even".to_string(),
+                field_timestamp: NaiveDate::from_ymd(2001, 9, 9).and_hms(1, 46, 40),
+            },
+            api::tests::SimpleMessage {
+                field_int32: 3,
+                field_int64: 33,
+                field_float: 3.33,
+                field_double: 3.333,
+                field_boolean: true,
+                field_string: "odd".to_string(),
+                field_timestamp: NaiveDate::from_ymd(2001, 9, 9).and_hms(1, 46, 40),
+            },
+        ];
 
         let subcomand = def();
-        let msgs = api::tests::create_simple_messages(3);
-        let arg_vec = vec!["frequency", path_str, "-f=csv", "-c=field_timestamp"];
+        let arg_vec = vec!["frequency", path_str, "-f=csv", "-c=field_string"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
         api::tests::write_simple_messages_parquet(&path, &msgs);
@@ -257,14 +287,8 @@ mod tests {
 
         assert_eq!(3, actual.lines().count());
         assert!(actual.starts_with("FIELD,VALUE,COUNT"));
-        assert!(actual.contains(&format!(
-            "field_timestamp,{},2",
-            api::tests::time_to_str(1_238_544_000_000)
-        )));
-        assert!(actual.contains(&format!(
-            "field_timestamp,{},1",
-            api::tests::time_to_str(1_238_544_060_000)
-        )));
+        assert!(actual.contains("field_string,\"odd\",2"));
+        assert!(actual.contains("field_string,\"even\",1"));
         assert!(actual.ends_with(""));
     }
 }
