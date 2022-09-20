@@ -58,9 +58,9 @@ mod tests {
         let arg_vec = vec!["count", parquet.path().to_str().unwrap()];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
+        api::tests::write_simple_messages_parquet(parquet.path(), &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -79,9 +79,9 @@ mod tests {
         let arg_vec = vec!["count", parquet.path().to_str().unwrap(), "-f=v"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
+        api::tests::write_simple_messages_parquet(parquet.path(), &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -100,9 +100,9 @@ mod tests {
         let arg_vec = vec!["count", parquet.path().to_str().unwrap(), "-f=c"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
+        api::tests::write_simple_messages_parquet(parquet.path(), &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();

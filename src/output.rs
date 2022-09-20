@@ -1,6 +1,7 @@
 use crate::api::{Error, Result};
 use std::cmp;
 use std::convert::TryFrom;
+use std::fmt::Write as _;
 use std::io::Write;
 use std::str;
 use tabwriter::TabWriter;
@@ -16,7 +17,7 @@ fn format_cell(value: &str, width: usize) -> String {
     }
 
     if length < width {
-        result.push_str(&format!("{:^1$}", " ", width - length));
+        let _ = write!(result, "{:^1$}", " ", width - length);
 
         return result;
     }
@@ -145,7 +146,7 @@ fn write_csv<W: Write>(
 }
 
 /// Output foramt.
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum OutputFormat {
     // Tabular format
     Tabular,
@@ -517,13 +518,9 @@ mod tests {
         let mut buff = Cursor::new(Vec::new());
         let headers = vec![String::from("c")];
         let val_vec: Vec<String> = (0..1000).map(|n| format!("{}", n)).collect();
-        let values = val_vec
-            .iter()
-            .map(|n| Ok(vec![n.to_string()]))
-            .collect::<Vec<_>>();
+        let values = val_vec.iter().map(|n| Ok(vec![n.to_string()]));
 
-        let iter = values.into_iter();
-        let mut writer = OutputWriter::new(headers, iter);
+        let mut writer = OutputWriter::new(headers, values);
 
         writer.write(&mut buff).unwrap();
 

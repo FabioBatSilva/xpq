@@ -32,7 +32,7 @@ fn format_rows(
     vec.into_iter()
         .enumerate()
         .map(move |t| {
-            let header = (&fields[t.0]).to_string();
+            let header = fields[t.0].to_string();
             let counts =
                 t.1.least_frequent()
                     .into_iter()
@@ -145,9 +145,9 @@ mod tests {
         ];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -180,9 +180,9 @@ mod tests {
             ])
             .unwrap();
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -207,9 +207,9 @@ mod tests {
         let arg_vec = vec!["frequency", path_str, "-f=v", "-c=field_boolean"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -278,9 +278,9 @@ mod tests {
         let arg_vec = vec!["frequency", path_str, "-f=csv", "-c=field_string"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();

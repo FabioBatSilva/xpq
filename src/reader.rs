@@ -339,9 +339,9 @@ mod tests {
         let result2 = create_parquet_reader(&path2);
         let result3 = create_parquet_reader(&path3);
 
-        assert_eq!(result1.is_ok(), true);
-        assert_eq!(result2.is_ok(), false);
-        assert_eq!(result3.is_ok(), false);
+        assert!(result1.is_ok());
+        assert!(result2.is_err());
+        assert!(result3.is_err());
     }
 
     #[test]
@@ -560,9 +560,9 @@ mod tests {
         let result_err = parquet_err.schema();
         let result_ok = parquet_ok.schema();
 
-        assert_eq!(result_ok.is_ok(), true);
-        assert_eq!(result_err.is_err(), true);
-        assert_eq!(result_empty.is_err(), true);
+        assert!(result_ok.is_ok());
+        assert!(result_err.is_err());
+        assert!(result_empty.is_err());
 
         assert_eq!(
             format!("{}", result_err.err().unwrap()),

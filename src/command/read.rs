@@ -93,9 +93,9 @@ mod tests {
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
         let msgs = api::tests::create_simple_messages(3);
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -128,9 +128,9 @@ mod tests {
             ])
             .unwrap();
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -160,9 +160,9 @@ mod tests {
         let arg_vec = vec!["read", path_str, "-f=v", "-c=field_int32,field_int64"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -182,9 +182,9 @@ mod tests {
         let arg_vec = vec!["read", path_str, "-f=csv", "-c=field_int32,field_string"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();

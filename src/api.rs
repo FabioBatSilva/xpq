@@ -6,7 +6,7 @@ use std::result;
 
 quick_error! {
     /// Set of errors that can be produced during different operations.
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Eq)]
     pub enum Error {
         /// General Parquet error.
         Parquet(path: PathBuf, err: ParquetError) {
@@ -45,7 +45,7 @@ quick_error! {
 pub type Result<T> = result::Result<T, Error>;
 
 #[cfg(test)]
-pub(in crate) mod tests {
+pub(crate) mod tests {
     extern crate chrono;
     extern crate tempfile;
 
