@@ -1,6 +1,7 @@
 use crate::api::{Error, Result};
 use std::cmp;
 use std::convert::TryFrom;
+use std::fmt::Write as _;
 use std::io::Write;
 use std::str;
 use tabwriter::TabWriter;
@@ -16,7 +17,7 @@ fn format_cell(value: &str, width: usize) -> String {
     }
 
     if length < width {
-        result.push_str(&format!("{:^1$}", " ", width - length));
+        let _ = write!(result, "{:^1$}", " ", width - length);
 
         return result;
     }
@@ -55,7 +56,7 @@ fn format_row(
                 return e.1.to_owned();
             }
 
-            format_cell(&e.1, width[e.0])
+            format_cell(e.1, width[e.0])
         })
         .collect::<Vec<_>>()
         .join("\t");
@@ -145,7 +146,7 @@ fn write_csv<W: Write>(
 }
 
 /// Output foramt.
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum OutputFormat {
     // Tabular format
     Tabular,
@@ -154,12 +155,15 @@ pub enum OutputFormat {
     Vertical,
 
     // CSV format
-    CSV,
+    Csv,
 }
 
+const OUTPUT_FORMAT_VALUES: &[&str] =
+    &["t", "table", "tabular", "v", "vertical", "c", "csv"];
+
 impl OutputFormat {
-    pub fn values() -> Vec<&'static str> {
-        vec!["t", "table", "tabular", "v", "vertical", "c", "csv"]
+    pub fn values() -> &'static [&'static str] {
+        OUTPUT_FORMAT_VALUES
     }
 }
 
@@ -168,7 +172,7 @@ impl TryFrom<String> for OutputFormat {
 
     fn try_from(value: String) -> Result<Self> {
         match value.to_lowercase().as_ref() {
-            "csv" | "c" => Ok(OutputFormat::CSV),
+            "csv" | "c" => Ok(OutputFormat::Csv),
             "vertical" | "v" => Ok(OutputFormat::Vertical),
             "tabular" | "table" | "t" => Ok(OutputFormat::Tabular),
             _ => Err(Error::InvalidArgument(value)),
@@ -238,7 +242,7 @@ where
             OutputFormat::Vertical => {
                 write_vertical(&mut self.values, &self.config, &self.headers, out)?;
             }
-            OutputFormat::CSV => {
+            OutputFormat::Csv => {
                 write_csv(&mut self.values, &self.config, &self.headers, out)?;
             }
         }
@@ -390,12 +394,12 @@ mod tests {
 
         assert_eq!(
             OutputFormat::try_from(String::from("c"))?,
-            OutputFormat::CSV
+            OutputFormat::Csv
         );
 
         assert_eq!(
             OutputFormat::try_from(String::from("CSV"))?,
-            OutputFormat::CSV
+            OutputFormat::Csv
         );
 
         assert_eq!(
@@ -480,7 +484,7 @@ mod tests {
         ];
 
         let iter = values.into_iter();
-        let mut writer = OutputWriter::new(headers, iter).format(OutputFormat::CSV);
+        let mut writer = OutputWriter::new(headers, iter).format(OutputFormat::Csv);
 
         writer.write(&mut buff).unwrap();
 
@@ -514,13 +518,9 @@ mod tests {
         let mut buff = Cursor::new(Vec::new());
         let headers = vec![String::from("c")];
         let val_vec: Vec<String> = (0..1000).map(|n| format!("{}", n)).collect();
-        let values = val_vec
-            .iter()
-            .map(|n| Ok(vec![n.to_string()]))
-            .collect::<Vec<_>>();
+        let values = val_vec.iter().map(|n| Ok(vec![n.to_string()]));
 
-        let iter = values.into_iter();
-        let mut writer = OutputWriter::new(headers, iter);
+        let mut writer = OutputWriter::new(headers, values);
 
         writer.write(&mut buff).unwrap();
 

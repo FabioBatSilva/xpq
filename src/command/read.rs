@@ -5,7 +5,7 @@ use crate::reader::ParquetFile;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::io::Write;
 
-pub fn def() -> App<'static, 'static> {
+pub fn def() -> App<'static> {
     SubCommand::with_name("read")
         .about("Read rows from parquet")
         .arg(
@@ -14,7 +14,7 @@ pub fn def() -> App<'static, 'static> {
                 .takes_value(true)
                 .long("columns")
                 .multiple(true)
-                .short("c"),
+                .short('c'),
         )
         .arg(
             Arg::with_name("search")
@@ -23,7 +23,7 @@ pub fn def() -> App<'static, 'static> {
                 .takes_value(true)
                 .long("search")
                 .multiple(true)
-                .short("s"),
+                .short('s'),
         )
         .arg(
             Arg::with_name("limit")
@@ -31,15 +31,15 @@ pub fn def() -> App<'static, 'static> {
                 .help("Max number of rows")
                 .default_value("500")
                 .long("limit")
-                .short("l"),
+                .short('l'),
         )
         .arg(
             Arg::with_name("format")
                 .help("Output format")
-                .possible_values(&OutputFormat::values())
+                .possible_values(OutputFormat::values())
                 .default_value("table")
                 .long("format")
-                .short("f"),
+                .short('f'),
         )
         .arg(
             Arg::with_name("path")
@@ -93,9 +93,9 @@ mod tests {
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
         let msgs = api::tests::create_simple_messages(3);
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -128,9 +128,9 @@ mod tests {
             ])
             .unwrap();
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -160,9 +160,9 @@ mod tests {
         let arg_vec = vec!["read", path_str, "-f=v", "-c=field_int32,field_int64"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -182,9 +182,9 @@ mod tests {
         let arg_vec = vec!["read", path_str, "-f=csv", "-c=field_int32,field_string"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();

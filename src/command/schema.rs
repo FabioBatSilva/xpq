@@ -5,7 +5,7 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use parquet::schema::printer::print_schema;
 use std::io::Write;
 
-pub fn def() -> App<'static, 'static> {
+pub fn def() -> App<'static> {
     SubCommand::with_name("schema")
         .about("Show parquet schema")
         .arg(
@@ -14,7 +14,7 @@ pub fn def() -> App<'static, 'static> {
                 .possible_values(&["hive"])
                 .default_value("hive")
                 .long("format")
-                .short("f"),
+                .short('f'),
         )
         .arg(
             Arg::with_name("path")
@@ -47,14 +47,14 @@ mod tests {
         let mut output = Cursor::new(Vec::new());
         let parquet = api::tests::temp_file("msg", "parquet");
         let expected = vec![
-            "message simple_message {",
-            "  OPTIONAL INT32 field_int32;",
-            "  OPTIONAL INT64 field_int64;",
-            "  OPTIONAL FLOAT field_float;",
-            "  OPTIONAL DOUBLE field_double;",
-            "  OPTIONAL BYTE_ARRAY field_string (UTF8);",
-            "  OPTIONAL BOOLEAN field_boolean;",
-            "  OPTIONAL INT96 field_timestamp;",
+            "message rust_schema {",
+            "  REQUIRED INT32 field_int32;",
+            "  REQUIRED INT64 field_int64;",
+            "  REQUIRED FLOAT field_float;",
+            "  REQUIRED DOUBLE field_double;",
+            "  REQUIRED BYTE_ARRAY field_string (STRING);",
+            "  REQUIRED BOOLEAN field_boolean;",
+            "  REQUIRED INT64 field_timestamp (TIMESTAMP_MILLIS);",
             "}",
             "",
         ]
@@ -65,9 +65,9 @@ mod tests {
         let arg_vec = vec!["schema", parquet.path().to_str().unwrap()];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
+        api::tests::write_simple_messages_parquet(parquet.path(), &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();

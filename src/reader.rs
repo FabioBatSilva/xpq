@@ -311,7 +311,7 @@ where
 mod tests {
     use super::*;
     use crate::api;
-    use api::tests::time_to_str;
+    use chrono::NaiveDateTime;
     use std::fs::File;
 
     #[test]
@@ -325,9 +325,9 @@ mod tests {
             field_int64: 2,
             field_float: 3.3,
             field_double: 4.4,
-            field_string: "5".to_string(),
             field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
+            field_string: "5".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         File::create(path1.clone()).unwrap();
@@ -339,9 +339,9 @@ mod tests {
         let result2 = create_parquet_reader(&path2);
         let result3 = create_parquet_reader(&path3);
 
-        assert_eq!(result1.is_ok(), true);
-        assert_eq!(result2.is_ok(), false);
-        assert_eq!(result3.is_ok(), false);
+        assert!(result1.is_ok());
+        assert!(result2.is_err());
+        assert!(result3.is_err());
     }
 
     #[test]
@@ -392,9 +392,9 @@ mod tests {
             field_int64: 2,
             field_float: 3.3,
             field_double: 4.4,
-            field_string: "5".to_string(),
             field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
+            field_string: "5".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         api::tests::write_simple_messages_parquet(&path, &[msg]);
@@ -449,9 +449,9 @@ mod tests {
             field_int64: 2,
             field_float: 3.3,
             field_double: 4.4,
-            field_string: "5".to_string(),
             field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
+            field_string: "5".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         let msg2 = api::tests::SimpleMessage {
@@ -459,9 +459,9 @@ mod tests {
             field_int64: 22,
             field_float: 33.3,
             field_double: 44.4,
-            field_string: "55".to_string(),
             field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+            field_string: "55".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         api::tests::write_simple_messages_parquet(&path1, &[msg1]);
@@ -492,9 +492,9 @@ mod tests {
             field_int64: 2,
             field_float: 3.3,
             field_double: 4.4,
-            field_string: "5".to_string(),
             field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
+            field_string: "5".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         let msg2 = api::tests::SimpleMessage {
@@ -502,9 +502,9 @@ mod tests {
             field_int64: 22,
             field_float: 33.3,
             field_double: 44.4,
-            field_string: "55".to_string(),
             field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+            field_string: "55".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         let msg3 = api::tests::SimpleMessage {
@@ -512,9 +512,9 @@ mod tests {
             field_int64: 222,
             field_float: 332.3,
             field_double: 444.4,
-            field_string: "555".to_string(),
             field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+            field_string: "555".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         api::tests::write_simple_messages_parquet(&path1, &[msg1, msg2]);
@@ -546,9 +546,9 @@ mod tests {
             field_int64: 2,
             field_float: 3.3,
             field_double: 4.4,
-            field_string: "5".to_string(),
             field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
+            field_string: "5".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         api::tests::write_simple_messages_parquet(&path1, &[msg1]);
@@ -560,9 +560,9 @@ mod tests {
         let result_err = parquet_err.schema();
         let result_ok = parquet_ok.schema();
 
-        assert_eq!(result_ok.is_ok(), true);
-        assert_eq!(result_err.is_err(), true);
-        assert_eq!(result_empty.is_err(), true);
+        assert!(result_ok.is_ok());
+        assert!(result_err.is_err());
+        assert!(result_empty.is_err());
 
         assert_eq!(
             format!("{}", result_err.err().unwrap()),
@@ -590,9 +590,9 @@ mod tests {
             field_int64: 2,
             field_float: 3.3,
             field_double: 4.4,
-            field_string: "5".to_string(),
             field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
+            field_string: "5".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         let msg2 = api::tests::SimpleMessage {
@@ -600,9 +600,9 @@ mod tests {
             field_int64: 22,
             field_float: 33.3,
             field_double: 44.4,
-            field_string: "55".to_string(),
             field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+            field_string: "55".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         api::tests::write_simple_messages_parquet(path.as_path(), &[msg1, msg2]);
@@ -630,9 +630,9 @@ mod tests {
             field_int64: 2,
             field_float: 3.3,
             field_double: 4.4,
-            field_string: "5".to_string(),
             field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
+            field_string: "5".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         let msg2 = api::tests::SimpleMessage {
@@ -640,9 +640,9 @@ mod tests {
             field_int64: 22,
             field_float: 33.3,
             field_double: 44.4,
-            field_string: "55".to_string(),
             field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+            field_string: "55".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         api::tests::write_simple_messages_parquet(&path, &[msg1, msg2]);
@@ -661,7 +661,7 @@ mod tests {
                 "4.4",
                 "\"5\"",
                 "true",
-                &time_to_str(1_238_544_000_000)
+                "2001-09-09 01:46:40 +00:00"
             ]
         );
         assert_eq!(
@@ -673,7 +673,7 @@ mod tests {
                 "44.4",
                 "\"55\"",
                 "false",
-                &time_to_str(1_238_544_060_000)
+                "2001-09-09 01:46:40 +00:00"
             ]
         );
     }
@@ -712,9 +712,9 @@ mod tests {
             field_int64: 2,
             field_float: 3.3,
             field_double: 4.4,
-            field_string: "5".to_string(),
             field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
+            field_string: "5".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         api::tests::write_simple_messages_parquet(&path, &[msg]);
@@ -789,9 +789,9 @@ mod tests {
             field_int64: 2,
             field_float: 3.3,
             field_double: 4.4,
-            field_string: "odd 1".to_string(),
             field_boolean: true,
-            field_timestamp: vec![0, 0, 2_454_923],
+            field_string: "odd 1".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         let msg2 = api::tests::SimpleMessage {
@@ -799,9 +799,9 @@ mod tests {
             field_int64: 22,
             field_float: 33.3,
             field_double: 44.4,
-            field_string: "even 1".to_string(),
             field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+            field_string: "even 1".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         let msg3 = api::tests::SimpleMessage {
@@ -809,9 +809,9 @@ mod tests {
             field_int64: 222,
             field_float: 333.3,
             field_double: 444.4,
-            field_string: "odd 2".to_string(),
             field_boolean: false,
-            field_timestamp: vec![4_165_425_152, 13, 2_454_923],
+            field_string: "odd 2".to_string(),
+            field_timestamp: NaiveDateTime::from_timestamp(1_000_000_000, 0),
         };
 
         api::tests::write_simple_messages_parquet(&path, &[msg1, msg2, msg3]);

@@ -8,7 +8,7 @@ use rand::thread_rng;
 use std::collections::HashSet;
 use std::io::Write;
 
-pub fn def() -> App<'static, 'static> {
+pub fn def() -> App<'static> {
     SubCommand::with_name("sample")
         .about("Randomly sample rows from parquet")
         .arg(
@@ -17,7 +17,7 @@ pub fn def() -> App<'static, 'static> {
                 .takes_value(true)
                 .long("columns")
                 .multiple(true)
-                .short("c"),
+                .short('c'),
         )
         .arg(
             Arg::with_name("sample")
@@ -25,15 +25,15 @@ pub fn def() -> App<'static, 'static> {
                 .help("Sample size limit")
                 .default_value("100")
                 .long("sample")
-                .short("s"),
+                .short('s'),
         )
         .arg(
             Arg::with_name("format")
                 .help("Output format")
-                .possible_values(&OutputFormat::values())
+                .possible_values(OutputFormat::values())
                 .default_value("table")
                 .long("format")
-                .short("f"),
+                .short('f'),
         )
         .arg(
             Arg::with_name("path")
@@ -78,7 +78,6 @@ pub fn run<W: Write>(matches: &ArgMatches, out: &mut W) -> Result<()> {
 mod tests {
     use super::*;
     use crate::api;
-    use api::tests::time_to_str;
     use std::io::Cursor;
     use std::str;
 
@@ -88,8 +87,8 @@ mod tests {
         let parquet = api::tests::temp_file("msg", ".parquet");
         let expected = vec![
             "field_int32  field_int64  field_float  field_double  field_string  field_boolean  field_timestamp",
-            &format!("1            11           111.3        1111.4        \"odd 11111\"   false          {}", time_to_str(1_238_544_000_000)),
-            &format!("2            22           222.3        2222.4        \"even 22222\"  true           {}", time_to_str(1_238_544_060_000)),
+            "1            11           111.3        1111.4        \"odd 11111\"   false          2011-01-01 00:00:00 +00:00",
+            "2            22           222.3        2222.4        \"even 22222\"  true           2012-01-01 00:00:00 +00:00",
             ""
         ]
         .join("\n");
@@ -99,9 +98,9 @@ mod tests {
         let arg_vec = vec!["sample", parquet.path().to_str().unwrap()];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
+        api::tests::write_simple_messages_parquet(parquet.path(), &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -128,9 +127,9 @@ mod tests {
         let arg_vec = vec!["sample", path_str, "-c=field_boolean", "-c=field_int32"];
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&path, &msgs);
+        api::tests::write_simple_messages_parquet(path, &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -166,9 +165,9 @@ mod tests {
         let msgs = api::tests::create_simple_messages(2);
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
+        api::tests::write_simple_messages_parquet(parquet.path(), &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();
@@ -183,8 +182,8 @@ mod tests {
         let path_str = parquet.path().to_str().unwrap();
         let expected = vec![
             "field_int32,field_timestamp",
-            &format!("1,{}", time_to_str(1_238_544_000_000)),
-            &format!("2,{}", time_to_str(1_238_544_060_000)),
+            "1,2011-01-01 00:00:00 +00:00",
+            "2,2012-01-01 00:00:00 +00:00",
             "",
         ]
         .join("\n");
@@ -200,9 +199,9 @@ mod tests {
         let msgs = api::tests::create_simple_messages(2);
         let args = subcomand.get_matches_from_safe(arg_vec).unwrap();
 
-        api::tests::write_simple_messages_parquet(&parquet.path(), &msgs);
+        api::tests::write_simple_messages_parquet(parquet.path(), &msgs);
 
-        assert_eq!(true, run(&args, &mut output).is_ok());
+        assert!(run(&args, &mut output).is_ok());
 
         let vec = output.into_inner();
         let actual = str::from_utf8(&vec).unwrap();

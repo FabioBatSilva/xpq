@@ -10,21 +10,21 @@ fn run(matches: ArgMatches) -> api::Result<()> {
     let out = &mut std::io::stdout();
 
     match matches.subcommand() {
-        ("read", Some(m)) => command::read::run(m, out),
-        ("schema", Some(m)) => command::schema::run(m, out),
-        ("sample", Some(m)) => command::sample::run(m, out),
-        ("count", Some(m)) => command::count::run(m, out),
-        ("frequency", Some(m)) => command::frequency::run(m, out),
+        Some(("read", args)) => command::read::run(args, out),
+        Some(("schema", args)) => command::schema::run(args, out),
+        Some(("sample", args)) => command::sample::run(args, out),
+        Some(("count", args)) => command::count::run(args, out),
+        Some(("frequency", args)) => command::frequency::run(args, out),
         _ => Ok(()),
     }
 }
 
 fn main() {
-    let app = App::new("xpq")
+    let app = App::new(env!("CARGO_PKG_NAME"))
+        .author(env!("CARGO_PKG_AUTHORS"))
+        .about(env!("CARGO_PKG_DESCRIPTION"))
         .version(env!("CARGO_PKG_VERSION"))
         .setting(AppSettings::ArgRequiredElseHelp)
-        .author("Fabio B. Silva <fabio.bat.silva@gmail.com>")
-        .about("Simple Parquet command line toolkit.")
         .subcommands(vec![
             command::read::def(),
             command::count::def(),
