@@ -18,12 +18,12 @@ jobs:
           -
             target: x86_64-unknown-linux-gnu
             artifact: xpq-x86_64-linux-gnu
-            os: ubuntu-18.04
+            os: ubuntu-22.04
             bin: xpq
           -
             target: x86_64-pc-windows-gnu
             artifact: xpq-x86_64-pc-windows.exe
-            os: ubuntu-18.04
+            os: ubuntu-22.04
             bin: xpq.exe
           -
             target: x86_64-apple-darwin
@@ -34,7 +34,7 @@ jobs:
     steps:
       -
         name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       -
         id: get_release
         name: get-release
@@ -67,12 +67,12 @@ jobs:
 
   publish:
     name: cargo publish
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     needs: [release]
     steps:
       -
         name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       -
         name: toolchain
         uses: actions-rs/toolchain@v1
