@@ -14,17 +14,21 @@ on:
 jobs:
 
   lint:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       -
         name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       -
         name: cache-cargo
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
-          path: ~/.cargo/registry
-          key: cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/git/db/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
       -
         name: toolchain
         uses: actions-rs/toolchain@v1
@@ -42,17 +46,21 @@ jobs:
           cargo clippy --all-targets --all-features -- -D warnings
 
   test:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       -
         name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       -
         name: cache-cargo
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
-          path: ~/.cargo/registry
-          key: cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/git/db/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
       -
         name: toolchain
         uses: actions-rs/toolchain@v1
@@ -77,12 +85,12 @@ jobs:
           -
             target: x86_64-unknown-linux-gnu
             artifact: xpq-x86_64-linux-gnu
-            os: ubuntu-18.04
+            os: ubuntu-22.04
             bin: xpq
           -
             target: x86_64-pc-windows-gnu
             artifact: xpq-x86_64-pc-windows.exe
-            os: ubuntu-18.04
+            os: ubuntu-22.04
             bin: xpq.exe
           -
             target: x86_64-apple-darwin
@@ -93,7 +101,7 @@ jobs:
     steps:
       -
         name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       -
         name: cargo-test
         uses: actions-rs/cargo@v1
